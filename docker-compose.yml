@@ -1,0 +1,96 @@
+# ═══════════════════════════════════════════════════════════
+# AgentMemoryDB — Docker Compose
+# ═══════════════════════════════════════════════════════════
+# Quick start:
+#   docker compose up -d            → start everything
+#   docker compose logs -f app      → watch API logs
+#   docker compose exec app alembic upgrade head  → run migrations manually
+#   docker compose down -v          → tear down + delete data
+# ═══════════════════════════════════════════════════════════
+
+services:
+  # ── PostgreSQL + pgvector ────────────────────────────────
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: agentmemodb-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: agentmem
+      POSTGRES_PASSWORD: agentmem_secret
+      POSTGRES_DB: agentmemorydb
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./docker/init-db.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U agentmem -d agentmemorydb"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    shm_size: 256mb
+
+  # ── AgentMemoryDB API Server ─────────────────────────────
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: agentmemodb-app
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: "postgresql+asyncpg://agentmem:agentmem_secret@db:5432/agentmemorydb"
+      ENVIRONMENT: development
+      LOG_LEVEL: info
+      EMBEDDING_PROVIDER: sentence-transformers
+      EMBEDDING_DIMENSION: "384"
+      SENTENCE_TRANSFORMERS_HOME: /opt/st_models
+      ENABLE_DOCS: "true"
+      ENABLE_WEBSOCKET: "true"
+      ENABLE_MCP: "true"
+      ENABLE_EXPLORER: "true"
+      ENABLE_SCHEDULER: "true"
+      ENABLE_METRICS: "true"
+      UVICORN_WORKERS: "1"
+    ports:
+      - "${APP_PORT:-8100}:8100"
+    depends_on:
+      db:
+        condition: service_healthy
+    command: serve
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8100/api/v1/health"]
+      interval: 15s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+
+  # ── Development override (mount source for hot-reload) ───
+  app-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: agentmemodb-app-dev
+    profiles: ["dev"]
+    environment:
+      DATABASE_URL: "postgresql+asyncpg://agentmem:agentmem_secret@db:5432/agentmemorydb"
+      ENVIRONMENT: development
+      LOG_LEVEL: debug
+      EMBEDDING_PROVIDER: dummy
+      ENABLE_DOCS: "true"
+      ENABLE_WEBSOCKET: "true"
+      ENABLE_MCP: "true"
+      ENABLE_EXPLORER: "true"
+      ENABLE_SCHEDULER: "true"
+    ports:
+      - "${APP_PORT:-8100}:8100"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./app:/code/app:ro
+      - ./alembic:/code/alembic:ro
+    command: serve-dev
+
+volumes:
+  pgdata:
+    driver: local

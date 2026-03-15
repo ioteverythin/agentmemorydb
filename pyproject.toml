@@ -1,0 +1,122 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "agentmemorydb"
+version = "0.1.0"
+description = "SQL-native, auditable, event-sourced memory + state backend for agentic AI."
+readme = "README.md"
+license = { text = "Apache-2.0" }
+requires-python = ">=3.11"
+authors = [
+    { name = "AgentMemoryDB Contributors" },
+]
+keywords = ["ai", "agents", "memory", "postgres", "pgvector", "event-sourced", "llm"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Framework :: FastAPI",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Database",
+]
+
+dependencies = [
+    "fastapi>=0.110.0,<1.0.0",
+    "uvicorn[standard]>=0.27.0,<1.0.0",
+    "sqlalchemy[asyncio]>=2.0.25,<3.0.0",
+    "asyncpg>=0.29.0,<1.0.0",
+    "alembic>=1.13.0,<2.0.0",
+    "pgvector>=0.3.0,<1.0.0",
+    "pydantic>=2.5.0,<3.0.0",
+    "pydantic-settings>=2.1.0,<3.0.0",
+    "python-dotenv>=1.0.0,<2.0.0",
+    "httpx>=0.26.0,<1.0.0",
+    "numpy>=1.26.0,<3.0.0",
+    "click>=8.1.0,<9.0.0",
+    "websockets>=12.0,<14.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0,<9.0.0",
+    "pytest-asyncio>=0.23.0,<1.0.0",
+    "pytest-cov>=4.1.0,<6.0.0",
+    "ruff>=0.2.0,<1.0.0",
+    "black>=24.0.0,<25.0.0",
+    "pre-commit>=3.6.0,<4.0.0",
+    "mypy>=1.8.0,<2.0.0",
+    "aiosqlite>=0.19.0,<1.0.0",
+]
+
+openai = [
+    "openai>=1.10.0,<2.0.0",
+]
+
+cohere = [
+    "cohere>=5.0.0,<6.0.0",
+]
+
+sentence-transformers = [
+    "sentence-transformers>=2.6.0,<4.0.0",
+]
+
+metrics = [
+    "prometheus_client>=0.20.0,<1.0.0",
+]
+
+all = [
+    "openai>=1.10.0,<2.0.0",
+    "cohere>=5.0.0,<6.0.0",
+    "sentence-transformers>=2.6.0,<4.0.0",
+    "prometheus_client>=0.20.0,<1.0.0",
+]
+
+[project.scripts]
+agentmemodb = "app.cli:cli"
+
+[project.urls]
+Homepage = "https://github.com/agentmemorydb/agentmemorydb"
+Documentation = "https://github.com/agentmemorydb/agentmemorydb/tree/main/docs"
+Repository = "https://github.com/agentmemorydb/agentmemorydb"
+Issues = "https://github.com/agentmemorydb/agentmemorydb/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["app", "agentmemodb"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP", "B", "SIM", "RUF"]
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["app"]
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+markers = [
+    "integration: marks tests as integration tests (deselect with '-m \"not integration\"')",
+    "unit: marks tests as unit tests",
+]
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+plugins = ["pydantic.mypy"]

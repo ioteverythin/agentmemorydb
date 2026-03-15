@@ -1,0 +1,73 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Environment
+.env
+.env.local
+.env.production
+
+# Testing
+.pytest_cache/
+htmlcov/
+.coverage
+coverage.xml
+
+# Linting / formatting
+.ruff_cache/
+.mypy_cache/
+
+# Docker
+pgdata/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Alembic
+alembic/versions/__pycache__/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# PyPI build artifacts
+pkg/_build/
+pkg/dist/
+
+# Build log artifacts
+build_output.txt
+build_plain.txt
+
+# Agent demo cache
+.agent_demo_user_id
+
+# Node modules
+node_modules/
+frontend/node_modules/
+
+# Frontend build output (built in Docker)
+frontend/dist/
+
+# TypeScript SDK build
+sdks/typescript/dist/
+sdks/typescript/node_modules/
+

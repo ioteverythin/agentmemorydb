@@ -1,0 +1,59 @@
+# Version control
+.git
+.github
+.gitignore
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+.pytest_cache
+.ruff_cache
+.mypy_cache
+htmlcov
+.coverage
+coverage.xml
+dist
+build
+*.egg-info
+
+# Virtual environments
+.venv
+venv
+env
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# Environment files (injected at runtime)
+.env
+.env.local
+.env.production
+
+# Docker volumes
+pgdata
+
+# Docs / non-runtime
+docs
+examples
+*.md
+!README.md
+LICENSE
+CODE_OF_CONDUCT.md
+CONTRIBUTING.md
+SECURITY.md
+Makefile
+.pre-commit-config.yaml
+
+# Tests (not needed in production image)
+tests
+
+# SDKs (published separately)
+sdks
+
+# Frontend build artifacts (we build inside Docker)
+frontend/node_modules
+frontend/dist

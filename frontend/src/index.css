@@ -1,0 +1,58 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    overflow: hidden;
+  }
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #161b22;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #30363d;
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #484f58;
+  }
+}
+
+@layer components {
+  .input-field {
+    @apply bg-gh-bg border border-gh-border text-gh-text text-sm rounded px-3 py-2 outline-none transition-colors;
+  }
+  .input-field:focus {
+    @apply border-gh-accent;
+  }
+  .input-field::placeholder {
+    @apply text-gh-dim;
+  }
+  .btn-primary {
+    @apply bg-gh-accent text-gh-bg font-semibold text-sm px-4 py-2 rounded cursor-pointer;
+  }
+  .btn-primary:hover {
+    @apply opacity-90;
+  }
+  .btn-primary:disabled {
+    @apply opacity-50 cursor-not-allowed;
+  }
+  .btn-outline {
+    @apply bg-transparent border border-gh-border text-gh-muted text-sm px-3 py-2 rounded cursor-pointer transition-colors;
+  }
+  .btn-outline:hover {
+    @apply border-gh-accent text-gh-accent;
+  }
+  .btn-sm {
+    @apply text-xs px-2 py-1;
+  }
+}

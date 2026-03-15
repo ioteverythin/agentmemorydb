@@ -1,0 +1,106 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "agentmemodb"
+version = "0.1.0"
+description = "Lightweight, embeddable memory backend for AI agents — short-term conversation, long-term knowledge, semantic search, PII masking."
+readme = "README.md"
+license = { text = "Apache-2.0" }
+requires-python = ">=3.11"
+authors = [
+    { name = "AgentMemoryDB Contributors" },
+]
+keywords = [
+    "ai",
+    "agents",
+    "memory",
+    "llm",
+    "rag",
+    "langchain",
+    "langgraph",
+    "embeddings",
+    "vector-search",
+    "conversation-memory",
+    "short-term-memory",
+    "long-term-memory",
+    "pii-masking",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Database",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
+]
+
+# Minimal core deps — no heavy frameworks
+dependencies = [
+    "numpy>=1.26.0,<3.0.0",
+]
+
+[project.optional-dependencies]
+# Remote server mode
+remote = [
+    "httpx>=0.26.0,<1.0.0",
+]
+
+# Embedding providers
+openai = [
+    "openai>=1.10.0,<2.0.0",
+]
+
+huggingface = [
+    "sentence-transformers>=2.6.0,<4.0.0",
+]
+
+# Framework integrations
+langchain = [
+    "langchain-core>=0.2.0",
+]
+
+langgraph = [
+    "langchain-core>=0.2.0",
+    "langgraph>=0.2.0",
+]
+
+# Everything
+all = [
+    "httpx>=0.26.0,<1.0.0",
+    "openai>=1.10.0,<2.0.0",
+    "sentence-transformers>=2.6.0,<4.0.0",
+    "langchain-core>=0.2.0",
+    "langgraph>=0.2.0",
+]
+
+# Development
+dev = [
+    "pytest>=8.0.0,<9.0.0",
+    "build>=1.0.0",
+    "twine>=5.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/agentmemorydb/agentmemorydb"
+Documentation = "https://github.com/agentmemorydb/agentmemorydb/tree/main/docs"
+Repository = "https://github.com/agentmemorydb/agentmemorydb"
+Issues = "https://github.com/agentmemorydb/agentmemorydb/issues"
+Changelog = "https://github.com/agentmemorydb/agentmemorydb/releases"
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "agentmemodb/",
+    "LICENSE",
+    "README.md",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["agentmemodb"]
