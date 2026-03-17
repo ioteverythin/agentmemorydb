@@ -10,20 +10,16 @@ Covers:
 
 from __future__ import annotations
 
-import asyncio
 import json
-import uuid
-from datetime import datetime, timedelta, timezone
-from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from datetime import UTC, datetime, timedelta
+from unittest.mock import AsyncMock
 
 import pytest
 
 # ═══════════════════════════════════════════════════════════════════
 # 1. MCP Server Tests
 # ═══════════════════════════════════════════════════════════════════
-
-from app.mcp.server import MCPServer, MCP_VERSION, SERVER_NAME, SERVER_VERSION, create_mcp_server
+from app.mcp.server import MCP_VERSION, SERVER_NAME, SERVER_VERSION, MCPServer, create_mcp_server
 
 
 @pytest.mark.unit
@@ -530,7 +526,7 @@ class TestConnectionManager:
 # 4. Scheduler Tests
 # ═══════════════════════════════════════════════════════════════════
 
-from app.workers.scheduler import ScheduledJob, MaintenanceScheduler, get_scheduler
+from app.workers.scheduler import MaintenanceScheduler, ScheduledJob, get_scheduler
 
 
 @pytest.mark.unit
@@ -563,7 +559,7 @@ class TestScheduledJob:
             handler=AsyncMock(),
             interval_minutes=60,
         )
-        job.last_run = datetime.now(timezone.utc)
+        job.last_run = datetime.now(UTC)
         assert job.is_due is False
 
     def test_overdue_job_is_due(self):
@@ -572,7 +568,7 @@ class TestScheduledJob:
             handler=AsyncMock(),
             interval_minutes=60,
         )
-        job.last_run = datetime.now(timezone.utc) - timedelta(minutes=120)
+        job.last_run = datetime.now(UTC) - timedelta(minutes=120)
         assert job.is_due is True
 
     def test_next_run_when_never_run(self):
@@ -583,7 +579,7 @@ class TestScheduledJob:
         )
         # Should be approximately now
         assert job.next_run is not None
-        assert (job.next_run - datetime.now(timezone.utc)).total_seconds() < 5
+        assert (job.next_run - datetime.now(UTC)).total_seconds() < 5
 
     def test_next_run_after_execution(self):
         job = ScheduledJob(
@@ -591,7 +587,7 @@ class TestScheduledJob:
             handler=AsyncMock(),
             interval_minutes=30,
         )
-        run_time = datetime.now(timezone.utc) - timedelta(minutes=10)
+        run_time = datetime.now(UTC) - timedelta(minutes=10)
         job.last_run = run_time
         expected = run_time + timedelta(minutes=30)
         assert job.next_run == expected
@@ -622,7 +618,10 @@ class TestMaintenanceScheduler:
 
         from app.core.config import settings
 
-        assert job_map["consolidate_duplicates"].interval_minutes == settings.scheduler_consolidation_interval
+        assert (
+            job_map["consolidate_duplicates"].interval_minutes
+            == settings.scheduler_consolidation_interval
+        )
         assert job_map["archive_stale"].interval_minutes == settings.scheduler_archive_interval
         assert job_map["recompute_recency"].interval_minutes == settings.scheduler_recency_interval
         assert job_map["cleanup_expired"].interval_minutes == settings.scheduler_cleanup_interval
@@ -785,7 +784,7 @@ class TestNewSettings:
 # 6. WebSocket Singleton + emit_memory_event Tests
 # ═══════════════════════════════════════════════════════════════════
 
-from app.ws import get_connection_manager, emit_memory_event
+from app.ws import emit_memory_event, get_connection_manager
 
 
 @pytest.mark.unit

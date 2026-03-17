@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -16,18 +16,18 @@ from app.utils.scoring import (
 @pytest.mark.unit
 class TestRecencyScore:
     def test_just_now_is_one(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         score = compute_recency_score(now, now=now)
         assert abs(score - 1.0) < 1e-6
 
     def test_half_life_gives_half(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         past = now - timedelta(hours=72)
         score = compute_recency_score(past, now=now, half_life_hours=72.0)
         assert abs(score - 0.5) < 0.01
 
     def test_very_old_approaches_zero(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         past = now - timedelta(days=365)
         score = compute_recency_score(past, now=now)
         assert score < 0.01

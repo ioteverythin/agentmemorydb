@@ -14,9 +14,9 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
-
 # ── Built-in PII patterns ──────────────────────────────────────────
 # Each pattern has: name, compiled regex, replacement token.
+
 
 @dataclass(frozen=True, slots=True)
 class PIIPattern:
@@ -33,9 +33,7 @@ class PIIPattern:
 _BUILTIN_PATTERNS: dict[str, PIIPattern] = {
     "ssn": PIIPattern(
         name="ssn",
-        regex=re.compile(
-            r"\b\d{3}[-–]\d{2}[-–]\d{4}\b"
-        ),
+        regex=re.compile(r"\b\d{3}[-–]\d{2}[-–]\d{4}\b"),
         token="[SSN]",
     ),
     "credit_card": PIIPattern(
@@ -48,9 +46,7 @@ _BUILTIN_PATTERNS: dict[str, PIIPattern] = {
     ),
     "email": PIIPattern(
         name="email",
-        regex=re.compile(
-            r"\b[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}\b"
-        ),
+        regex=re.compile(r"\b[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}\b"),
         token="[EMAIL]",
     ),
     "phone": PIIPattern(
@@ -116,6 +112,7 @@ class Detection:
 
 
 # ── Engine ──────────────────────────────────────────────────────────
+
 
 class PIIMaskingEngine:
     """Stateless masking engine.
@@ -217,7 +214,9 @@ class PIIMaskingEngine:
             was_modified=True,
         )
 
-    def mask_dict(self, data: dict[str, Any], fields: list[str] | None = None) -> dict[str, list[Detection]]:
+    def mask_dict(
+        self, data: dict[str, Any], fields: list[str] | None = None
+    ) -> dict[str, list[Detection]]:
         """Mask string values within a dictionary in-place.
 
         Parameters
@@ -255,13 +254,12 @@ def get_default_engine() -> PIIMaskingEngine:
     if not settings.enable_data_masking:
         return PIIMaskingEngine(enabled_patterns=[])
 
-    pattern_names = [
-        p.strip() for p in settings.masking_patterns.split(",") if p.strip()
-    ]
+    pattern_names = [p.strip() for p in settings.masking_patterns.split(",") if p.strip()]
 
     custom: list[dict[str, str]] | None = None
     if settings.masking_custom_patterns:
         import json
+
         try:
             custom = json.loads(settings.masking_custom_patterns)
         except (json.JSONDecodeError, TypeError):

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import math
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from app.core.config import settings
 
@@ -19,10 +19,10 @@ def compute_recency_score(
     halves every ``half_life_hours``.
     """
     if now is None:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
     # Ensure both are offset-aware
     if updated_at.tzinfo is None:
-        updated_at = updated_at.replace(tzinfo=timezone.utc)
+        updated_at = updated_at.replace(tzinfo=UTC)
     age_hours = max((now - updated_at).total_seconds() / 3600.0, 0.0)
     return math.exp(-math.log(2) * age_hours / half_life_hours)
 

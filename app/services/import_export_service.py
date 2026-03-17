@@ -3,19 +3,17 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
-from typing import Any, Sequence
+from datetime import UTC, datetime
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.memory import Memory
-from app.models.memory_version import MemoryVersion
 from app.models.memory_link import MemoryLink
 from app.repositories.memory_repository import MemoryRepository
 from app.schemas.memory import MemoryUpsert
 from app.services.memory_service import MemoryService
-from app.utils.hashing import compute_content_hash
 
 
 class ImportExportService:
@@ -107,7 +105,7 @@ class ImportExportService:
 
         result_dict: dict[str, Any] = {
             "export_version": "1.0",
-            "exported_at": datetime.now(timezone.utc).isoformat(),
+            "exported_at": datetime.now(UTC).isoformat(),
             "user_id": str(user_id),
             "memory_count": len(exported_memories),
             "memories": exported_memories,
@@ -199,8 +197,7 @@ class ImportExportService:
 
         # Import links if present
         links_data = data.get("links", [])
-        links_imported = 0
-        for link in links_data:
+        for _link in links_data:
             try:
                 # Links reference original IDs — map via memory_key lookups
                 # For now, skip link import (requires ID mapping)

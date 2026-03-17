@@ -7,8 +7,9 @@ import hmac
 import json
 import logging
 import uuid
-from datetime import datetime, timezone
-from typing import Any, Sequence
+from collections.abc import Sequence
+from datetime import UTC, datetime
+from typing import Any
 
 import httpx
 from sqlalchemy import select
@@ -50,9 +51,7 @@ class WebhookService:
         return webhook
 
     async def list_webhooks(self, user_id: uuid.UUID) -> Sequence[Webhook]:
-        stmt = select(Webhook).where(
-            Webhook.user_id == user_id, Webhook.is_active.is_(True)
-        )
+        stmt = select(Webhook).where(Webhook.user_id == user_id, Webhook.is_active.is_(True))
         result = await self._session.execute(stmt)
         return result.scalars().all()
 
@@ -86,9 +85,7 @@ class WebhookService:
         self, user_id: uuid.UUID, event_type: str
     ) -> Sequence[Webhook]:
         """Find all active webhooks that match the given event type."""
-        stmt = select(Webhook).where(
-            Webhook.user_id == user_id, Webhook.is_active.is_(True)
-        )
+        stmt = select(Webhook).where(Webhook.user_id == user_id, Webhook.is_active.is_(True))
         result = await self._session.execute(stmt)
         all_hooks = result.scalars().all()
 
@@ -110,7 +107,7 @@ class WebhookService:
         body = json.dumps(
             {
                 "event_type": event_type,
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
                 "data": payload,
             },
             default=str,
@@ -118,9 +115,7 @@ class WebhookService:
 
         headers: dict[str, str] = {"Content-Type": "application/json"}
         if webhook.secret:
-            signature = hmac.new(
-                webhook.secret.encode(), body.encode(), hashlib.sha256
-            ).hexdigest()
+            signature = hmac.new(webhook.secret.encode(), body.encode(), hashlib.sha256).hexdigest()
             headers["X-Webhook-Signature"] = f"sha256={signature}"
 
         last_delivery: WebhookDelivery | None = None

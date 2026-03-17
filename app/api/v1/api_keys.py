@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.auth import generate_api_key, hash_api_key
+from app.core.auth import generate_api_key
 from app.db.session import get_session
 from app.models.api_key import APIKey
 from app.schemas.common import OrmBase
@@ -39,6 +39,7 @@ class APIKeyResponse(OrmBase):
 
 class APIKeyCreatedResponse(APIKeyResponse):
     """Returned only on creation — includes the raw key (shown once)."""
+
     raw_key: str
 
 

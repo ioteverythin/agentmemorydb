@@ -9,12 +9,12 @@ than issuing raw CRUD calls.
 from __future__ import annotations
 
 import uuid
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import Any, Callable, Awaitable
+from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
+from typing import Any
 
 from app.db import async_session_factory
-from app.schemas.memory import MemoryUpsert, MemorySearchRequest
+from app.schemas.memory import MemorySearchRequest, MemoryUpsert
 
 
 @dataclass
@@ -28,6 +28,7 @@ class ToolDefinition:
 
 
 # ─── Tool Handlers ───────────────────────────────────────────────
+
 
 async def handle_store_memory(arguments: dict[str, Any]) -> dict[str, Any]:
     """Store or update a memory in the agent's memory system."""
@@ -195,13 +196,15 @@ async def handle_explore_graph(arguments: dict[str, Any]) -> dict[str, Any]:
 
         results = []
         for node in nodes:
-            results.append({
-                "memory_id": str(node["memory_id"]),
-                "memory_key": node["memory_key"],
-                "content": node["content"][:200],
-                "memory_type": node.get("memory_type", ""),
-                "status": node.get("status", ""),
-            })
+            results.append(
+                {
+                    "memory_id": str(node["memory_id"]),
+                    "memory_key": node["memory_key"],
+                    "content": node["content"][:200],
+                    "memory_type": node.get("memory_type", ""),
+                    "status": node.get("status", ""),
+                }
+            )
 
         return {
             "origin": arguments["memory_id"],
@@ -245,8 +248,15 @@ TOOL_REGISTRY: dict[str, ToolDefinition] = {
         input_schema={
             "type": "object",
             "properties": {
-                "user_id": {"type": "string", "format": "uuid", "description": "The user/owner of the memory."},
-                "memory_key": {"type": "string", "description": "A unique identifier key for this memory (e.g. 'user_preference_language')."},
+                "user_id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "description": "The user/owner of the memory.",
+                },
+                "memory_key": {
+                    "type": "string",
+                    "description": "A unique identifier key for this memory (e.g. 'user_preference_language').",
+                },
                 "content": {"type": "string", "description": "The textual content of the memory."},
                 "memory_type": {
                     "type": "string",
@@ -260,22 +270,48 @@ TOOL_REGISTRY: dict[str, ToolDefinition] = {
                     "default": "user",
                     "description": "Visibility scope of the memory.",
                 },
-                "confidence": {"type": "number", "minimum": 0, "maximum": 1, "default": 0.7, "description": "How confident the agent is in this memory."},
-                "importance_score": {"type": "number", "minimum": 0, "maximum": 1, "default": 0.5, "description": "How important this memory is."},
+                "confidence": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1,
+                    "default": 0.7,
+                    "description": "How confident the agent is in this memory.",
+                },
+                "importance_score": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1,
+                    "default": 0.5,
+                    "description": "How important this memory is.",
+                },
                 "source_type": {
                     "type": "string",
-                    "enum": ["human_input", "agent_inference", "system_inference", "external_api", "reflection", "consolidated"],
+                    "enum": [
+                        "human_input",
+                        "agent_inference",
+                        "system_inference",
+                        "external_api",
+                        "reflection",
+                        "consolidated",
+                    ],
                     "default": "agent_inference",
                 },
-                "project_id": {"type": "string", "format": "uuid", "description": "Optional project scope."},
+                "project_id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "description": "Optional project scope.",
+                },
                 "payload": {"type": "object", "description": "Optional structured metadata."},
-                "is_contradiction": {"type": "boolean", "default": False, "description": "Whether this contradicts an existing memory."},
+                "is_contradiction": {
+                    "type": "boolean",
+                    "default": False,
+                    "description": "Whether this contradicts an existing memory.",
+                },
             },
             "required": ["user_id", "memory_key", "content"],
         },
         handler=handle_store_memory,
     ),
-
     "recall_memories": ToolDefinition(
         name="recall_memories",
         description=(
@@ -287,11 +323,21 @@ TOOL_REGISTRY: dict[str, ToolDefinition] = {
         input_schema={
             "type": "object",
             "properties": {
-                "user_id": {"type": "string", "format": "uuid", "description": "The user whose memories to search."},
-                "query_text": {"type": "string", "description": "Natural language query to find relevant memories."},
+                "user_id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "description": "The user whose memories to search.",
+                },
+                "query_text": {
+                    "type": "string",
+                    "description": "Natural language query to find relevant memories.",
+                },
                 "memory_types": {
                     "type": "array",
-                    "items": {"type": "string", "enum": ["working", "episodic", "semantic", "procedural"]},
+                    "items": {
+                        "type": "string",
+                        "enum": ["working", "episodic", "semantic", "procedural"],
+                    },
                     "description": "Filter to specific memory types.",
                 },
                 "scopes": {
@@ -299,28 +345,45 @@ TOOL_REGISTRY: dict[str, ToolDefinition] = {
                     "items": {"type": "string", "enum": ["user", "project", "team", "global"]},
                     "description": "Filter to specific scopes.",
                 },
-                "top_k": {"type": "integer", "minimum": 1, "maximum": 100, "default": 10, "description": "Number of results to return."},
-                "min_confidence": {"type": "number", "minimum": 0, "maximum": 1, "description": "Minimum confidence threshold."},
-                "project_id": {"type": "string", "format": "uuid", "description": "Optional project filter."},
+                "top_k": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 100,
+                    "default": 10,
+                    "description": "Number of results to return.",
+                },
+                "min_confidence": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1,
+                    "description": "Minimum confidence threshold.",
+                },
+                "project_id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "description": "Optional project filter.",
+                },
             },
             "required": ["user_id"],
         },
         handler=handle_recall_memories,
     ),
-
     "get_memory": ToolDefinition(
         name="get_memory",
         description="Retrieve a specific memory by its ID. Returns full details including content, metadata, and versioning info.",
         input_schema={
             "type": "object",
             "properties": {
-                "memory_id": {"type": "string", "format": "uuid", "description": "The ID of the memory to retrieve."},
+                "memory_id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "description": "The ID of the memory to retrieve.",
+                },
             },
             "required": ["memory_id"],
         },
         handler=handle_get_memory,
     ),
-
     "link_memories": ToolDefinition(
         name="link_memories",
         description=(
@@ -331,8 +394,16 @@ TOOL_REGISTRY: dict[str, ToolDefinition] = {
         input_schema={
             "type": "object",
             "properties": {
-                "source_memory_id": {"type": "string", "format": "uuid", "description": "The source memory."},
-                "target_memory_id": {"type": "string", "format": "uuid", "description": "The target memory."},
+                "source_memory_id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "description": "The source memory.",
+                },
+                "target_memory_id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "description": "The target memory.",
+                },
                 "link_type": {
                     "type": "string",
                     "enum": ["derived_from", "contradicts", "supports", "related_to", "supersedes"],
@@ -344,7 +415,6 @@ TOOL_REGISTRY: dict[str, ToolDefinition] = {
         },
         handler=handle_link_memories,
     ),
-
     "record_event": ToolDefinition(
         name="record_event",
         description=(
@@ -355,21 +425,36 @@ TOOL_REGISTRY: dict[str, ToolDefinition] = {
         input_schema={
             "type": "object",
             "properties": {
-                "user_id": {"type": "string", "format": "uuid", "description": "The user associated with the event."},
+                "user_id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "description": "The user associated with the event.",
+                },
                 "content": {"type": "string", "description": "The event content/description."},
                 "event_type": {
                     "type": "string",
-                    "enum": ["user_message", "agent_message", "tool_call", "tool_result", "system_event", "observation", "reflection"],
+                    "enum": [
+                        "user_message",
+                        "agent_message",
+                        "tool_call",
+                        "tool_result",
+                        "system_event",
+                        "observation",
+                        "reflection",
+                    ],
                     "default": "agent_message",
                 },
-                "run_id": {"type": "string", "format": "uuid", "description": "Optional agent run ID."},
+                "run_id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "description": "Optional agent run ID.",
+                },
                 "metadata": {"type": "object", "description": "Optional structured metadata."},
             },
             "required": ["user_id", "content"],
         },
         handler=handle_record_event,
     ),
-
     "explore_graph": ToolDefinition(
         name="explore_graph",
         description=(
@@ -380,11 +465,30 @@ TOOL_REGISTRY: dict[str, ToolDefinition] = {
         input_schema={
             "type": "object",
             "properties": {
-                "memory_id": {"type": "string", "format": "uuid", "description": "The starting memory node."},
-                "max_depth": {"type": "integer", "minimum": 1, "maximum": 5, "default": 2, "description": "Maximum traversal depth."},
+                "memory_id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "description": "The starting memory node.",
+                },
+                "max_depth": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 5,
+                    "default": 2,
+                    "description": "Maximum traversal depth.",
+                },
                 "link_types": {
                     "type": "array",
-                    "items": {"type": "string", "enum": ["derived_from", "contradicts", "supports", "related_to", "supersedes"]},
+                    "items": {
+                        "type": "string",
+                        "enum": [
+                            "derived_from",
+                            "contradicts",
+                            "supports",
+                            "related_to",
+                            "supersedes",
+                        ],
+                    },
                     "description": "Filter to specific link types.",
                 },
             },
@@ -392,7 +496,6 @@ TOOL_REGISTRY: dict[str, ToolDefinition] = {
         },
         handler=handle_explore_graph,
     ),
-
     "consolidate_memories": ToolDefinition(
         name="consolidate_memories",
         description=(
@@ -403,9 +506,23 @@ TOOL_REGISTRY: dict[str, ToolDefinition] = {
         input_schema={
             "type": "object",
             "properties": {
-                "user_id": {"type": "string", "format": "uuid", "description": "The user whose memories to consolidate."},
-                "similarity_threshold": {"type": "number", "minimum": 0.5, "maximum": 1.0, "default": 0.92, "description": "Similarity threshold for near-duplicates."},
-                "dry_run": {"type": "boolean", "default": True, "description": "If true, only preview without merging."},
+                "user_id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "description": "The user whose memories to consolidate.",
+                },
+                "similarity_threshold": {
+                    "type": "number",
+                    "minimum": 0.5,
+                    "maximum": 1.0,
+                    "default": 0.92,
+                    "description": "Similarity threshold for near-duplicates.",
+                },
+                "dry_run": {
+                    "type": "boolean",
+                    "default": True,
+                    "description": "If true, only preview without merging.",
+                },
             },
             "required": ["user_id"],
         },

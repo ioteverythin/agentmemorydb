@@ -10,7 +10,7 @@ from app.core.auth import generate_api_key, hash_api_key
 @pytest.mark.unit
 class TestAPIKeyGeneration:
     def test_generate_key_has_prefix(self):
-        raw_key, key_hash, key_prefix = generate_api_key()
+        raw_key, _key_hash, _key_prefix = generate_api_key()
         assert raw_key.startswith("amdb_")
 
     def test_generate_key_is_unique(self):

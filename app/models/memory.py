@@ -17,14 +17,10 @@ from app.db.base import Base
 class Memory(Base):
     __tablename__ = "memories"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
     # ── Identity & scope ────────────────────────────────────────
-    user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), nullable=False, index=True
-    )
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
     project_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), nullable=True, index=True
     )
@@ -35,15 +31,15 @@ class Memory(Base):
     memory_type: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
     content: Mapped[str] = mapped_column(Text, nullable=False)
     content_hash: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
-    embedding = mapped_column(
-        Vector(settings.embedding_dimension), nullable=True
-    )
+    embedding = mapped_column(Vector(settings.embedding_dimension), nullable=True)
     payload: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
 
     # ── Provenance ──────────────────────────────────────────────
     source_type: Mapped[str] = mapped_column(String(64), nullable=False, default="system_inference")
     source_event_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
-    source_observation_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    source_observation_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), nullable=True
+    )
     source_run_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
 
     # ── Governance ──────────────────────────────────────────────
@@ -57,7 +53,9 @@ class Memory(Base):
     valid_from: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     valid_to: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    last_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_verified_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     # ── Versioning ──────────────────────────────────────────────
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)

@@ -2,15 +2,17 @@
 
 from __future__ import annotations
 
-import uuid
-from typing import Any
-
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_session
-from app.schemas.memory import MemoryResponse, MemorySearchRequest, MemorySearchResponse, MemoryUpsert
+from app.schemas.memory import (
+    MemoryResponse,
+    MemorySearchRequest,
+    MemorySearchResponse,
+    MemoryUpsert,
+)
 from app.services.memory_service import MemoryService
 from app.services.retrieval_service import RetrievalService
 
@@ -18,6 +20,7 @@ router = APIRouter()
 
 
 # ── Batch Upsert ────────────────────────────────────────────────
+
 
 class BatchUpsertRequest(BaseModel):
     memories: list[MemoryUpsert] = Field(..., min_length=1, max_length=100)
@@ -72,6 +75,7 @@ async def batch_upsert(
 
 
 # ── Batch Search ────────────────────────────────────────────────
+
 
 class BatchSearchRequest(BaseModel):
     queries: list[MemorySearchRequest] = Field(..., min_length=1, max_length=20)

@@ -4,8 +4,7 @@ from __future__ import annotations
 
 import math
 import uuid
-from datetime import datetime, timedelta, timezone
-from typing import Sequence
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -127,7 +126,7 @@ class AccessTrackingService:
 
         Returns the number of memories boosted.
         """
-        since = datetime.now(timezone.utc) - timedelta(hours=window_hours)
+        since = datetime.now(UTC) - timedelta(hours=window_hours)
         top_memories = await self.get_top_accessed(user_id, limit=100, since=since)
 
         boosted = 0
@@ -141,7 +140,7 @@ class AccessTrackingService:
 
             if new_importance > memory.importance_score:
                 memory.importance_score = round(new_importance, 4)
-                memory.updated_at = datetime.now(timezone.utc)
+                memory.updated_at = datetime.now(UTC)
                 boosted += 1
 
         return boosted
@@ -153,7 +152,7 @@ class AccessTrackingService:
         window_hours: int = 168,
     ) -> dict:
         """Get aggregate access statistics for a user."""
-        since = datetime.now(timezone.utc) - timedelta(hours=window_hours)
+        since = datetime.now(UTC) - timedelta(hours=window_hours)
 
         # Total accesses
         total_stmt = select(func.count()).where(
@@ -163,12 +162,9 @@ class AccessTrackingService:
         total = (await self._session.execute(total_stmt)).scalar() or 0
 
         # Unique memories accessed
-        unique_stmt = (
-            select(func.count(func.distinct(MemoryAccessLog.memory_id)))
-            .where(
-                MemoryAccessLog.user_id == user_id,
-                MemoryAccessLog.created_at >= since,
-            )
+        unique_stmt = select(func.count(func.distinct(MemoryAccessLog.memory_id))).where(
+            MemoryAccessLog.user_id == user_id,
+            MemoryAccessLog.created_at >= since,
         )
         unique = (await self._session.execute(unique_stmt)).scalar() or 0
 

@@ -7,7 +7,8 @@ import pytest
 from app.utils.extra_providers import OllamaEmbeddingProvider
 
 try:
-    from sentence_transformers import SentenceTransformer
+    from sentence_transformers import SentenceTransformer  # noqa: F401
+
     HAS_SENTENCE_TRANSFORMERS = True
 except ImportError:
     HAS_SENTENCE_TRANSFORMERS = False
@@ -21,11 +22,13 @@ class TestSentenceTransformerProvider:
     def test_dimension(self):
         """Default dimension for all-MiniLM-L6-v2 is 384."""
         from app.utils.extra_providers import SentenceTransformerProvider
+
         provider = SentenceTransformerProvider()
         assert provider.dimension() == 384
 
     def test_custom_model(self):
         from app.utils.extra_providers import SentenceTransformerProvider
+
         provider = SentenceTransformerProvider(model_name="all-MiniLM-L6-v2")
         assert provider.dimension() == 384
 

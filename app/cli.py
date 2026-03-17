@@ -20,8 +20,6 @@ from typing import Any
 
 import click
 
-from app.core.config import settings
-
 
 def _run_async(coro: Any) -> Any:
     """Run an async coroutine from synchronous Click commands."""
@@ -31,6 +29,7 @@ def _run_async(coro: Any) -> Any:
 async def _get_session():
     """Get a fresh async session for CLI operations."""
     from app.db.session import async_session_factory
+
     async with async_session_factory() as session:
         yield session
         await session.commit()
@@ -39,6 +38,7 @@ async def _get_session():
 async def _session_context():
     """Context manager for CLI session."""
     from app.db.session import async_session_factory
+
     session = async_session_factory()
     s = await session.__aenter__()
     return s, session
@@ -57,11 +57,12 @@ def health() -> None:
 
     async def _health() -> None:
         from sqlalchemy import text
+
         from app.db.session import engine
 
         try:
             async with engine.connect() as conn:
-                result = await conn.execute(text("SELECT 1"))
+                await conn.execute(text("SELECT 1"))
                 click.echo(click.style("✓ Database connection: OK", fg="green"))
 
                 # Check pgvector
@@ -96,6 +97,7 @@ def stats(user_id: str) -> None:
 
     async def _stats() -> None:
         from sqlalchemy import func, select
+
         from app.db.session import async_session_factory
         from app.models.memory import Memory
 
@@ -103,9 +105,7 @@ def stats(user_id: str) -> None:
         async with async_session_factory() as session:
             # Total memories
             total = (
-                await session.execute(
-                    select(func.count()).where(Memory.user_id == uid)
-                )
+                await session.execute(select(func.count()).where(Memory.user_id == uid))
             ).scalar() or 0
 
             # By status
@@ -146,13 +146,13 @@ def stats(user_id: str) -> None:
 
         click.echo(f"\n📊 Memory Statistics for user {user_id[:8]}…\n")
         click.echo(f"  Total memories:    {total}")
-        click.echo(f"\n  By status:")
+        click.echo("\n  By status:")
         for s, c in sorted(by_status.items()):
             click.echo(f"    {s:15s}  {c}")
-        click.echo(f"\n  By type:")
+        click.echo("\n  By type:")
         for t, c in sorted(by_type.items()):
             click.echo(f"    {t:15s}  {c}")
-        click.echo(f"\n  By scope:")
+        click.echo("\n  By scope:")
         for s, c in sorted(by_scope.items()):
             click.echo(f"    {s:15s}  {c}")
         if avgs[0] is not None:

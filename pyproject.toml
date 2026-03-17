@@ -94,7 +94,18 @@ line-length = 100
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W", "UP", "B", "SIM", "RUF"]
-ignore = ["E501"]
+ignore = [
+    "E501",    # line too long — handled by formatter
+    "B008",    # function-call-in-default-argument — standard FastAPI Depends pattern
+    "E402",    # module-import-not-at-top — needed for conditional shims (e.g. conftest)
+    "RUF001",  # ambiguous-unicode-character-string — intentional in some strings
+    "RUF002",  # ambiguous-unicode-character-docstring — intentional in docstrings
+    "E741",    # ambiguous-variable-name — short names acceptable in context
+    "N817",    # camelcase-imported-as-acronym — OK for well-known names
+    "RUF012",  # mutable-class-default — handled at the model level
+    "SIM105",  # suppressible-exception — explicit try/except preferred
+    "SIM117",  # multiple-with-statements — readability preference
+]
 
 [tool.ruff.lint.isort]
 known-first-party = ["app"]

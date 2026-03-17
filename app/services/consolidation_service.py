@@ -3,16 +3,14 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
-from typing import Sequence
+from datetime import UTC, datetime
 
-from sqlalchemy import and_, func, select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.memory import Memory
 from app.models.memory_link import MemoryLink
 from app.repositories.memory_repository import MemoryRepository
-from app.utils.hashing import compute_content_hash
 
 
 class ConsolidationService:
@@ -135,12 +133,12 @@ class ConsolidationService:
         keep.authority_level = max(keep.authority_level, archive.authority_level)
         keep.confidence = max(keep.confidence, archive.confidence)
         keep.importance_score = max(keep.importance_score, archive.importance_score)
-        keep.updated_at = datetime.now(timezone.utc)
+        keep.updated_at = datetime.now(UTC)
         keep.recency_score = 1.0
 
         # Archive the duplicate
         archive.status = "archived"
-        archive.updated_at = datetime.now(timezone.utc)
+        archive.updated_at = datetime.now(UTC)
 
         # Create supersedes link
         link = MemoryLink(
@@ -186,7 +184,7 @@ class ConsolidationService:
         """Compute cosine similarity between two vectors."""
         import math
 
-        dot = sum(x * y for x, y in zip(a, b))
+        dot = sum(x * y for x, y in zip(a, b, strict=False))
         norm_a = math.sqrt(sum(x * x for x in a))
         norm_b = math.sqrt(sum(x * x for x in b))
         if norm_a == 0 or norm_b == 0:

@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core import settings
 from app.models.masking_log import MaskingLog
 from app.utils.hashing import compute_content_hash
-from app.utils.masking import Detection, MaskingResult, PIIMaskingEngine, get_default_engine
+from app.utils.masking import MaskingResult, PIIMaskingEngine, get_default_engine
 
 
 class MaskingService:
@@ -138,9 +138,8 @@ class MaskingService:
         total_q = select(func.count(MaskingLog.id))
         total = (await self._session.execute(total_q)).scalar() or 0
 
-        by_type_q = (
-            select(MaskingLog.entity_type, func.count(MaskingLog.id))
-            .group_by(MaskingLog.entity_type)
+        by_type_q = select(MaskingLog.entity_type, func.count(MaskingLog.id)).group_by(
+            MaskingLog.entity_type
         )
         by_type_rows = (await self._session.execute(by_type_q)).all()
         by_entity_type = {row[0]: row[1] for row in by_type_rows}
@@ -170,7 +169,9 @@ class MaskingService:
             field_name=field_name,
             patterns_detected=list({d.pattern_name for d in result.detections}),
             detection_count=len(result.detections),
-            original_content_hash=compute_content_hash(result.original_text) if result.original_text else None,
+            original_content_hash=compute_content_hash(result.original_text)
+            if result.original_text
+            else None,
             user_id=user_id,
             run_id=run_id,
         )

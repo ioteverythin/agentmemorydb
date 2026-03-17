@@ -5,12 +5,14 @@ from __future__ import annotations
 import asyncio
 import uuid
 from collections.abc import AsyncGenerator
-from datetime import datetime, timezone
 from typing import Any
 
 import pytest
 import pytest_asyncio
-from sqlalchemy import event as sa_event, text
+
+# ── SQLite compatibility shims ──────────────────────────────────
+# Register type compilers so Postgres-only types degrade to SQLite types.
+from sqlalchemy.dialects.sqlite.base import SQLiteTypeCompiler
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     async_sessionmaker,
@@ -20,12 +22,6 @@ from sqlalchemy.ext.asyncio import (
 from app.core.config import settings
 from app.db.base import Base
 from app.utils.embedding_provider import DummyEmbeddingProvider, set_embedding_provider
-
-# ── SQLite compatibility shims ──────────────────────────────────
-# Register type compilers so Postgres-only types degrade to SQLite types.
-from sqlalchemy.dialects.postgresql import JSONB, UUID as PG_UUID
-from pgvector.sqlalchemy import Vector
-from sqlalchemy.dialects.sqlite.base import SQLiteTypeCompiler
 
 # JSONB → JSON (SQLite stores as TEXT)
 if not hasattr(SQLiteTypeCompiler, "visit_JSONB"):
@@ -118,6 +114,7 @@ def _use_dummy_embeddings() -> None:
 
 
 # ── Helpers ─────────────────────────────────────────────────────
+
 
 def make_uuid() -> uuid.UUID:
     return uuid.uuid4()

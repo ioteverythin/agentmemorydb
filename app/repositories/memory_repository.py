@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
-from typing import Any, Sequence
+from collections.abc import Sequence
+from datetime import UTC, datetime
 
 from sqlalchemy import and_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -52,7 +52,7 @@ class MemoryRepository(BaseRepository[Memory]):
             source_type=memory.source_type,
             status=memory.status,
             created_at=memory.created_at,
-            superseded_at=datetime.now(timezone.utc),
+            superseded_at=datetime.now(UTC),
         )
         self._session.add(version)
         await self._session.flush()
@@ -86,8 +86,7 @@ class MemoryRepository(BaseRepository[Memory]):
 
     async def get_links(self, memory_id: uuid.UUID) -> Sequence[MemoryLink]:
         stmt = select(MemoryLink).where(
-            (MemoryLink.source_memory_id == memory_id)
-            | (MemoryLink.target_memory_id == memory_id)
+            (MemoryLink.source_memory_id == memory_id) | (MemoryLink.target_memory_id == memory_id)
         )
         result = await self._session.execute(stmt)
         return result.scalars().all()
@@ -124,19 +123,15 @@ class MemoryRepository(BaseRepository[Memory]):
         if min_importance is not None:
             conditions.append(Memory.importance_score >= min_importance)
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         if not include_expired:
-            conditions.append(
-                (Memory.expires_at.is_(None)) | (Memory.expires_at > now)
-            )
-            conditions.append(
-                (Memory.valid_to.is_(None)) | (Memory.valid_to > now)
-            )
+            conditions.append((Memory.expires_at.is_(None)) | (Memory.expires_at > now))
+            conditions.append((Memory.valid_to.is_(None)) | (Memory.valid_to > now))
 
         if embedding is not None:
             # Vector similarity search using cosine distance
             # 1 - cosine_distance = cosine_similarity
-            embedding_str = "[" + ",".join(str(x) for x in embedding) + "]"
+            "[" + ",".join(str(x) for x in embedding) + "]"
             cosine_dist = Memory.embedding.cosine_distance(embedding)
             similarity = (1 - cosine_dist).label("similarity")
             stmt = (

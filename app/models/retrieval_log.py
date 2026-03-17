@@ -15,9 +15,7 @@ from app.db.base import Base
 class RetrievalLog(Base):
     __tablename__ = "retrieval_logs"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     run_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("agent_runs.id", ondelete="SET NULL"),
@@ -36,7 +34,7 @@ class RetrievalLog(Base):
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
 
-    items: Mapped[list["RetrievalLogItem"]] = relationship(
+    items: Mapped[list[RetrievalLogItem]] = relationship(
         back_populates="retrieval_log", lazy="selectin", cascade="all, delete-orphan"
     )
 
@@ -44,9 +42,7 @@ class RetrievalLog(Base):
 class RetrievalLogItem(Base):
     __tablename__ = "retrieval_log_items"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     retrieval_log_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("retrieval_logs.id", ondelete="CASCADE"),
@@ -70,4 +66,4 @@ class RetrievalLogItem(Base):
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
 
-    retrieval_log: Mapped["RetrievalLog"] = relationship(back_populates="items")
+    retrieval_log: Mapped[RetrievalLog] = relationship(back_populates="items")

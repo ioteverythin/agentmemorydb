@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import logging
 import uuid
-from datetime import datetime, timezone
-from typing import Sequence
+from collections.abc import Sequence
+from datetime import UTC, datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.errors import NotFoundError, ValidationError
+from app.core.errors import NotFoundError
 from app.core.metrics import record_upsert
 from app.models.memory import Memory
 from app.models.memory_link import MemoryLink
@@ -91,7 +91,7 @@ class MemoryService:
             # Skip update if content is identical
             if existing.content_hash == content_hash:
                 # Touch updated_at only
-                existing.updated_at = datetime.now(timezone.utc)
+                existing.updated_at = datetime.now(UTC)
                 existing.recency_score = 1.0
                 record_upsert("skip_identical")
                 return existing, False
@@ -125,7 +125,7 @@ class MemoryService:
             existing.valid_to = data.valid_to
             existing.expires_at = data.expires_at
             existing.version += 1
-            existing.updated_at = datetime.now(timezone.utc)
+            existing.updated_at = datetime.now(UTC)
 
             record_upsert("update")
             return existing, False
@@ -150,7 +150,7 @@ class MemoryService:
                 confidence=data.confidence,
                 importance_score=data.importance_score,
                 recency_score=1.0,
-                valid_from=data.valid_from or datetime.now(timezone.utc),
+                valid_from=data.valid_from or datetime.now(UTC),
                 valid_to=data.valid_to,
                 expires_at=data.expires_at,
                 version=1,
@@ -192,9 +192,8 @@ class MemoryService:
     async def update_status(self, memory_id: uuid.UUID, data: MemoryStatusUpdate) -> Memory:
         """Change the lifecycle status of a memory."""
         memory = await self.get_memory(memory_id)
-        old_status = memory.status
         memory.status = data.status
-        memory.updated_at = datetime.now(timezone.utc)
+        memory.updated_at = datetime.now(UTC)
         return memory
 
     # ── Versions & links ────────────────────────────────────────

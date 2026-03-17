@@ -9,7 +9,7 @@ Celery beat, or a simple cron invocation).
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import and_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -22,7 +22,7 @@ async def archive_stale_memories(session: AsyncSession) -> int:
 
     Returns the number of memories archived.
     """
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     stmt = (
         update(Memory)
@@ -50,7 +50,7 @@ async def recompute_recency_scores(session: AsyncSession) -> int:
     """
     import math
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     half_life_hours = 72.0
 
     stmt = select(Memory).where(Memory.status == "active")
@@ -61,7 +61,7 @@ async def recompute_recency_scores(session: AsyncSession) -> int:
     for memory in memories:
         updated = memory.updated_at
         if updated.tzinfo is None:
-            updated = updated.replace(tzinfo=timezone.utc)
+            updated = updated.replace(tzinfo=UTC)
         age_hours = max((now - updated).total_seconds() / 3600.0, 0.0)
         new_score = math.exp(-math.log(2) * age_hours / half_life_hours)
         memory.recency_score = round(new_score, 6)

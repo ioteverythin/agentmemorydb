@@ -21,9 +21,7 @@ class Settings(BaseSettings):
     enable_docs: bool = True
 
     # ── Database ─────────────────────────────────────────────────
-    database_url: str = (
-        "postgresql+asyncpg://agentmem:agentmem_secret@localhost:5432/agentmemorydb"
-    )
+    database_url: str = "postgresql+asyncpg://agentmem:agentmem_secret@localhost:5432/agentmemorydb"
     database_echo: bool = False
 
     # ── Embedding ────────────────────────────────────────────────
@@ -83,13 +81,13 @@ class Settings(BaseSettings):
 
     # ── Scheduled Maintenance ────────────────────────────────
     enable_scheduler: bool = True
-    scheduler_consolidation_interval: int = 3600      # seconds between runs
+    scheduler_consolidation_interval: int = 3600  # seconds between runs
     scheduler_archive_interval: int = 7200
     scheduler_recency_interval: int = 1800
     scheduler_cleanup_interval: int = 3600
     scheduler_prune_interval: int = 86400
-    scheduler_stale_threshold_days: int = 90          # archive memories older than
-    scheduler_access_log_retention_days: int = 90     # prune access logs older than
+    scheduler_stale_threshold_days: int = 90  # archive memories older than
+    scheduler_access_log_retention_days: int = 90  # prune access logs older than
     scheduler_enable_consolidation: bool = True
     scheduler_enable_archive: bool = True
     scheduler_enable_recency: bool = True
@@ -101,7 +99,9 @@ class Settings(BaseSettings):
 
     # ── Data Masking (PII Compliance) ────────────────────────
     enable_data_masking: bool = False  # Set True to mask PII before persistence
-    masking_patterns: str = "email,phone,ssn,credit_card,ip_address"  # comma-separated built-in patterns
+    masking_patterns: str = (
+        "email,phone,ssn,credit_card,ip_address"  # comma-separated built-in patterns
+    )
     masking_log_detections: bool = True  # Write audit log for every masking action
     masking_custom_patterns: str | None = None  # JSON array of {name, regex, token} dicts
 

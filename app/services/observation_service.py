@@ -3,12 +3,11 @@
 from __future__ import annotations
 
 import uuid
-from typing import Sequence
+from collections.abc import Sequence
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import NotFoundError
-from app.models.event import Event
 from app.models.observation import Observation
 from app.repositories.event_repository import EventRepository
 from app.repositories.observation_repository import ObservationRepository

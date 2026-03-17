@@ -7,7 +7,6 @@ Uses the lightweight `prometheus_client` library.
 from __future__ import annotations
 
 import time
-from typing import Any
 
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.requests import Request
@@ -15,12 +14,12 @@ from starlette.responses import Response
 
 try:
     from prometheus_client import (
+        CONTENT_TYPE_LATEST,
         CollectorRegistry,
         Counter,
-        Histogram,
         Gauge,
+        Histogram,
         generate_latest,
-        CONTENT_TYPE_LATEST,
     )
 
     PROMETHEUS_AVAILABLE = True
@@ -86,6 +85,7 @@ class PrometheusMiddleware(BaseHTTPMiddleware):
         path = request.url.path
         # Strip UUIDs from paths for metric labels
         import re
+
         path = re.sub(
             r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}",
             "{id}",

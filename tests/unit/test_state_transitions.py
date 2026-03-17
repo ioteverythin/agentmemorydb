@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import pytest
 
-from app.models.enums import TaskState
 from app.services.task_service import TaskService
 
 

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import uuid
-from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -48,9 +47,9 @@ async def get_task(
 
 @router.get("", response_model=list[TaskResponse])
 async def list_tasks(
-    user_id: Optional[uuid.UUID] = Query(default=None),
-    project_id: Optional[uuid.UUID] = Query(default=None),
-    state: Optional[str] = Query(default=None),
+    user_id: uuid.UUID | None = Query(default=None),
+    project_id: uuid.UUID | None = Query(default=None),
+    state: str | None = Query(default=None),
     limit: int = Query(default=100, ge=1, le=1000),
     offset: int = Query(default=0, ge=0),
     session: AsyncSession = Depends(get_session),

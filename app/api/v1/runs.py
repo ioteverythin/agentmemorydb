@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,9 +12,9 @@ from app.core.errors import NotFoundError
 from app.db.session import get_session
 from app.models.agent_run import AgentRun
 from app.repositories.run_repository import RunRepository
-from app.schemas.run import RunComplete, RunCreate, RunResponse
 from app.schemas.event import EventResponse
 from app.schemas.retrieval_log import RetrievalLogResponse
+from app.schemas.run import RunComplete, RunCreate, RunResponse
 from app.services.event_service import EventService
 from app.services.retrieval_log_service import RetrievalLogService
 
@@ -50,7 +50,7 @@ async def complete_run(
         raise NotFoundError("Run", run_id)
     run.status = "completed"
     run.summary = data.summary
-    run.completed_at = datetime.now(timezone.utc)
+    run.completed_at = datetime.now(UTC)
     return RunResponse.model_validate(run)
 
 

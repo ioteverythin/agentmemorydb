@@ -12,12 +12,9 @@ agents can reason about.
 from __future__ import annotations
 
 import json
-import uuid
-from datetime import datetime, timezone
 from typing import Any
 
 from app.mcp.tools import TOOL_REGISTRY, ToolDefinition
-
 
 # ─── MCP Protocol Constants ──────────────────────────────────────
 MCP_VERSION = "2024-11-05"
@@ -94,11 +91,13 @@ class MCPServer:
         """Return the list of available MCP tools."""
         tools = []
         for name, tool_def in self._tools.items():
-            tools.append({
-                "name": name,
-                "description": tool_def.description,
-                "inputSchema": tool_def.input_schema,
-            })
+            tools.append(
+                {
+                    "name": name,
+                    "description": tool_def.description,
+                    "inputSchema": tool_def.input_schema,
+                }
+            )
         return {"tools": tools}
 
     async def _handle_tools_call(self, params: dict[str, Any]) -> dict[str, Any]:
@@ -109,28 +108,34 @@ class MCPServer:
         tool_def = self._tools.get(tool_name)
         if tool_def is None:
             return {
-                "content": [{
-                    "type": "text",
-                    "text": json.dumps({"error": f"Unknown tool: {tool_name}"}),
-                }],
+                "content": [
+                    {
+                        "type": "text",
+                        "text": json.dumps({"error": f"Unknown tool: {tool_name}"}),
+                    }
+                ],
                 "isError": True,
             }
 
         try:
             result = await tool_def.handler(arguments)
             return {
-                "content": [{
-                    "type": "text",
-                    "text": json.dumps(result, default=str),
-                }],
+                "content": [
+                    {
+                        "type": "text",
+                        "text": json.dumps(result, default=str),
+                    }
+                ],
                 "isError": False,
             }
         except Exception as exc:
             return {
-                "content": [{
-                    "type": "text",
-                    "text": json.dumps({"error": str(exc)}),
-                }],
+                "content": [
+                    {
+                        "type": "text",
+                        "text": json.dumps({"error": str(exc)}),
+                    }
+                ],
                 "isError": True,
             }
 
@@ -161,38 +166,65 @@ class MCPServer:
 
         if uri == "agentmemorydb://schema":
             return {
-                "contents": [{
-                    "uri": uri,
-                    "mimeType": "application/json",
-                    "text": json.dumps({
-                        "memory_types": ["working", "episodic", "semantic", "procedural"],
-                        "memory_scopes": ["user", "project", "team", "global"],
-                        "memory_statuses": ["active", "superseded", "stale", "archived", "retracted"],
-                        "link_types": ["derived_from", "contradicts", "supports", "related_to", "supersedes"],
-                        "source_types": ["human_input", "agent_inference", "system_inference", "external_api", "reflection", "consolidated"],
-                        "scoring_weights": {
-                            "vector": 0.45,
-                            "recency": 0.20,
-                            "importance": 0.15,
-                            "authority": 0.10,
-                            "confidence": 0.10,
-                        },
-                    }),
-                }]
+                "contents": [
+                    {
+                        "uri": uri,
+                        "mimeType": "application/json",
+                        "text": json.dumps(
+                            {
+                                "memory_types": ["working", "episodic", "semantic", "procedural"],
+                                "memory_scopes": ["user", "project", "team", "global"],
+                                "memory_statuses": [
+                                    "active",
+                                    "superseded",
+                                    "stale",
+                                    "archived",
+                                    "retracted",
+                                ],
+                                "link_types": [
+                                    "derived_from",
+                                    "contradicts",
+                                    "supports",
+                                    "related_to",
+                                    "supersedes",
+                                ],
+                                "source_types": [
+                                    "human_input",
+                                    "agent_inference",
+                                    "system_inference",
+                                    "external_api",
+                                    "reflection",
+                                    "consolidated",
+                                ],
+                                "scoring_weights": {
+                                    "vector": 0.45,
+                                    "recency": 0.20,
+                                    "importance": 0.15,
+                                    "authority": 0.10,
+                                    "confidence": 0.10,
+                                },
+                            }
+                        ),
+                    }
+                ]
             }
 
         if uri == "agentmemorydb://stats":
             return {
-                "contents": [{
-                    "uri": uri,
-                    "mimeType": "application/json",
-                    "text": json.dumps({
-                        "status": "operational",
-                        "server": SERVER_NAME,
-                        "version": SERVER_VERSION,
-                        "protocol_version": MCP_VERSION,
-                    }),
-                }]
+                "contents": [
+                    {
+                        "uri": uri,
+                        "mimeType": "application/json",
+                        "text": json.dumps(
+                            {
+                                "status": "operational",
+                                "server": SERVER_NAME,
+                                "version": SERVER_VERSION,
+                                "protocol_version": MCP_VERSION,
+                            }
+                        ),
+                    }
+                ]
             }
 
         return {"contents": []}

@@ -15,9 +15,7 @@ from app.db.base import Base
 class Project(Base):
     __tablename__ = "projects"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
     )
@@ -31,4 +29,4 @@ class Project(Base):
     )
 
     # Relationships
-    user: Mapped["User"] = relationship(back_populates="projects")  # noqa: F821
+    user: Mapped[User] = relationship(back_populates="projects")  # noqa: F821

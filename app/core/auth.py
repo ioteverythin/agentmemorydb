@@ -4,8 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import secrets
-import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import Depends, HTTPException, Security, status
 from fastapi.security import APIKeyHeader
@@ -66,14 +65,14 @@ async def get_current_api_key(
         )
 
     # Check expiration
-    if db_key.expires_at and db_key.expires_at < datetime.now(timezone.utc):
+    if db_key.expires_at and db_key.expires_at < datetime.now(UTC):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="API key has expired.",
         )
 
     # Touch last_used_at
-    db_key.last_used_at = datetime.now(timezone.utc)
+    db_key.last_used_at = datetime.now(UTC)
 
     return db_key
 

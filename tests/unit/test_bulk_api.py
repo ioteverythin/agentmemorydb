@@ -47,9 +47,6 @@ class TestBulkSchemas:
     def test_batch_search_max_20(self):
         from app.schemas.memory import MemorySearchRequest
 
-        queries = [
-            MemorySearchRequest(user_id=uuid.uuid4(), query_text=f"q{i}")
-            for i in range(21)
-        ]
+        queries = [MemorySearchRequest(user_id=uuid.uuid4(), query_text=f"q{i}") for i in range(21)]
         with pytest.raises(ValidationError):
             BatchSearchRequest(queries=queries)

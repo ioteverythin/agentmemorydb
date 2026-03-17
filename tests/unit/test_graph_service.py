@@ -38,9 +38,7 @@ class TestGraphTraversal:
     async def test_expand_single_node(self, unit_session):
         """Expanding a node with no links should return just the seed."""
         user_id = await self._setup_user(unit_session)
-        mem = await self._create_memory(
-            unit_session, user_id, "lonely", "No connections"
-        )
+        mem = await self._create_memory(unit_session, user_id, "lonely", "No connections")
         svc = GraphTraversalService(unit_session)
         nodes = await svc.expand(mem.id, max_hops=2)
         assert len(nodes) == 1

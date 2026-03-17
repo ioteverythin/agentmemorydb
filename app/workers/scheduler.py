@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from app.core.config import settings
@@ -45,7 +45,7 @@ class ScheduledJob:
     @property
     def next_run(self) -> datetime | None:
         if self.last_run is None:
-            return datetime.now(timezone.utc)
+            return datetime.now(UTC)
         return self.last_run + timedelta(minutes=self.interval_minutes)
 
     @property
@@ -54,7 +54,7 @@ class ScheduledJob:
             return False
         if self.last_run is None:
             return True
-        return datetime.now(timezone.utc) >= self.next_run
+        return datetime.now(UTC) >= self.next_run
 
 
 class MaintenanceScheduler:
@@ -156,19 +156,24 @@ class MaintenanceScheduler:
     async def _execute_job(self, job: ScheduledJob) -> dict[str, Any]:
         """Execute a single job with error handling and logging."""
         logger.info("Running scheduled job: %s", job.name)
-        start = datetime.now(timezone.utc)
+        start = datetime.now(UTC)
 
         try:
             result = await job.handler()
-            job.last_run = datetime.now(timezone.utc)
+            job.last_run = datetime.now(UTC)
             job.run_count += 1
             job.last_error = None
             elapsed = (job.last_run - start).total_seconds()
             logger.info("Job %s completed in %.2fs: %s", job.name, elapsed, result)
-            return {"job": job.name, "status": "success", "elapsed_seconds": elapsed, "result": result}
+            return {
+                "job": job.name,
+                "status": "success",
+                "elapsed_seconds": elapsed,
+                "result": result,
+            }
         except Exception as exc:
             job.last_error = str(exc)
-            job.last_run = datetime.now(timezone.utc)
+            job.last_run = datetime.now(UTC)
             logger.error("Job %s failed: %s", job.name, exc)
             return {"job": job.name, "status": "error", "error": str(exc)}
 
@@ -176,8 +181,9 @@ class MaintenanceScheduler:
 
     async def _consolidate_duplicates(self) -> dict[str, Any]:
         """Find and merge near-duplicate memories across all users."""
-        from app.services.consolidation_service import ConsolidationService
         from sqlalchemy import text
+
+        from app.services.consolidation_service import ConsolidationService
 
         async with async_session_factory() as session:
             # Get distinct user IDs with active memories
@@ -205,7 +211,7 @@ class MaintenanceScheduler:
         from sqlalchemy import text
 
         stale_days = settings.scheduler_stale_threshold_days
-        cutoff = datetime.now(timezone.utc) - timedelta(days=stale_days)
+        cutoff = datetime.now(UTC) - timedelta(days=stale_days)
 
         async with async_session_factory() as session:
             result = await session.execute(
@@ -226,6 +232,7 @@ class MaintenanceScheduler:
     async def _recompute_recency_scores(self) -> dict[str, Any]:
         """Refresh recency scores for all active memories."""
         from sqlalchemy import text
+
         from app.utils.scoring import compute_recency_score
 
         async with async_session_factory() as session:
@@ -250,7 +257,7 @@ class MaintenanceScheduler:
         """Retract memories that have passed their expires_at timestamp."""
         from sqlalchemy import text
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         async with async_session_factory() as session:
             result = await session.execute(
                 text("""
@@ -272,7 +279,7 @@ class MaintenanceScheduler:
         from sqlalchemy import text
 
         retention_days = settings.scheduler_access_log_retention_days
-        cutoff = datetime.now(timezone.utc) - timedelta(days=retention_days)
+        cutoff = datetime.now(UTC) - timedelta(days=retention_days)
 
         async with async_session_factory() as session:
             result = await session.execute(

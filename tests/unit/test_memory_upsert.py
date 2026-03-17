@@ -86,7 +86,7 @@ class TestMemoryUpsert:
             memory_type="semantic",
             content="Water boils at 100°C at sea level.",
         )
-        mem1, _ = await svc.upsert(data)
+        _mem1, _ = await svc.upsert(data)
         mem2, is_new = await svc.upsert(data)
 
         assert is_new is False

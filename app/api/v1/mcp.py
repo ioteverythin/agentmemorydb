@@ -39,12 +39,14 @@ async def list_mcp_tools():
 
     Returns the tools in a simplified format for documentation/discovery.
     """
-    result = await _mcp_server.handle_message({
-        "jsonrpc": "2.0",
-        "id": "list",
-        "method": "tools/list",
-        "params": {},
-    })
+    result = await _mcp_server.handle_message(
+        {
+            "jsonrpc": "2.0",
+            "id": "list",
+            "method": "tools/list",
+            "params": {},
+        }
+    )
     tools = result.get("result", {}).get("tools", [])
     return {"tools": tools, "count": len(tools)}
 
@@ -52,10 +54,16 @@ async def list_mcp_tools():
 @router.get("/schema")
 async def mcp_schema():
     """Return the MCP server capabilities and schema reference."""
-    result = await _mcp_server.handle_message({
-        "jsonrpc": "2.0",
-        "id": "init",
-        "method": "initialize",
-        "params": {"protocolVersion": "2024-11-05", "capabilities": {}, "clientInfo": {"name": "docs", "version": "0.0.0"}},
-    })
+    result = await _mcp_server.handle_message(
+        {
+            "jsonrpc": "2.0",
+            "id": "init",
+            "method": "initialize",
+            "params": {
+                "protocolVersion": "2024-11-05",
+                "capabilities": {},
+                "clientInfo": {"name": "docs", "version": "0.0.0"},
+            },
+        }
+    )
     return result.get("result", {})

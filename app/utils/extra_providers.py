@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import os
-from typing import Any
 
 from app.core.config import settings
 from app.utils.embedding_provider import BaseEmbeddingProvider
@@ -26,9 +25,7 @@ class CohereEmbeddingProvider(BaseEmbeddingProvider):
         self._model = model
         self._dim = dim or settings.embedding_dimension
         if not self._api_key:
-            raise ValueError(
-                "Cohere API key required. Set COHERE_API_KEY or pass api_key."
-            )
+            raise ValueError("Cohere API key required. Set COHERE_API_KEY or pass api_key.")
 
     def dimension(self) -> int:
         return self._dim
@@ -37,9 +34,7 @@ class CohereEmbeddingProvider(BaseEmbeddingProvider):
         try:
             import cohere
         except ImportError as exc:
-            raise ImportError(
-                "Install cohere: pip install cohere"
-            ) from exc
+            raise ImportError("Install cohere: pip install cohere") from exc
 
         co = cohere.Client(self._api_key)
         response = co.embed(

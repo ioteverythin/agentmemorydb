@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 import abc
-import math
-from typing import Any
 
 import numpy as np
 
@@ -66,9 +64,7 @@ class OpenAIEmbeddingProvider(BaseEmbeddingProvider):
         self._model = model or settings.openai_embedding_model
         self._dim = dim or settings.embedding_dimension
         if not self._api_key:
-            raise ValueError(
-                "OpenAI API key required. Set OPENAI_API_KEY or pass api_key."
-            )
+            raise ValueError("OpenAI API key required. Set OPENAI_API_KEY or pass api_key.")
 
     def dimension(self) -> int:
         return self._dim

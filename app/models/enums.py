@@ -5,7 +5,7 @@ from __future__ import annotations
 import enum
 
 
-class MemoryType(str, enum.Enum):
+class MemoryType(enum.StrEnum):
     """Classification of memory kind."""
 
     WORKING = "working"
@@ -14,7 +14,7 @@ class MemoryType(str, enum.Enum):
     PROCEDURAL = "procedural"
 
 
-class MemoryStatus(str, enum.Enum):
+class MemoryStatus(enum.StrEnum):
     """Lifecycle status of a canonical memory."""
 
     ACTIVE = "active"
@@ -24,7 +24,7 @@ class MemoryStatus(str, enum.Enum):
     RETRACTED = "retracted"
 
 
-class SourceType(str, enum.Enum):
+class SourceType(enum.StrEnum):
     """Provenance classification for an observation or memory."""
 
     USER_INPUT = "user_input"
@@ -34,7 +34,7 @@ class SourceType(str, enum.Enum):
     IMPORTED = "imported"
 
 
-class EventType(str, enum.Enum):
+class EventType(enum.StrEnum):
     """Coarse category of events in the append-only log."""
 
     USER_INPUT = "user_input"
@@ -46,7 +46,7 @@ class EventType(str, enum.Enum):
     SYSTEM_NOTE = "system_note"
 
 
-class TaskState(str, enum.Enum):
+class TaskState(enum.StrEnum):
     """Finite state machine states for tasks."""
 
     PENDING = "pending"
@@ -57,7 +57,7 @@ class TaskState(str, enum.Enum):
     CANCELLED = "cancelled"
 
 
-class MemoryScope(str, enum.Enum):
+class MemoryScope(enum.StrEnum):
     """Visibility scope of a memory record."""
 
     USER = "user"
@@ -66,7 +66,7 @@ class MemoryScope(str, enum.Enum):
     GLOBAL = "global"
 
 
-class LinkType(str, enum.Enum):
+class LinkType(enum.StrEnum):
     """Relationship type between two memories."""
 
     SUPPORTS = "supports"
@@ -76,7 +76,7 @@ class LinkType(str, enum.Enum):
     RELATED_TO = "related_to"
 
 
-class ObservationStatus(str, enum.Enum):
+class ObservationStatus(enum.StrEnum):
     """Status of a candidate observation."""
 
     PENDING = "pending"

@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import uuid
-from typing import Any, Generic, Sequence, Type, TypeVar
+from collections.abc import Sequence
+from typing import Any, Generic, TypeVar
 
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,7 +17,7 @@ ModelT = TypeVar("ModelT", bound=Base)
 class BaseRepository(Generic[ModelT]):
     """Thin data-access layer over an async SQLAlchemy session."""
 
-    def __init__(self, model: Type[ModelT], session: AsyncSession) -> None:
+    def __init__(self, model: type[ModelT], session: AsyncSession) -> None:
         self._model = model
         self._session = session
 

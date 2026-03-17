@@ -10,12 +10,12 @@ import uuid
 
 import pytest
 
-from app.models.user import User
 from app.models.agent_run import AgentRun
-from app.schemas.memory import MemoryUpsert, MemorySearchRequest
+from app.models.user import User
+from app.schemas.memory import MemorySearchRequest, MemoryUpsert
 from app.services.memory_service import MemoryService
-from app.services.retrieval_service import RetrievalService
 from app.services.retrieval_log_service import RetrievalLogService
+from app.services.retrieval_service import RetrievalService
 
 
 @pytest.mark.integration

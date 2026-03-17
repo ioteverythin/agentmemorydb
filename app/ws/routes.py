@@ -3,9 +3,8 @@
 from __future__ import annotations
 
 import json
-from typing import Any
 
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
+from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
 
 from app.ws import get_connection_manager
 
@@ -52,38 +51,58 @@ async def websocket_endpoint(
                     channel = msg.get("channel", "")
                     if channel:
                         await manager.subscribe(websocket, channel)
-                        await websocket.send_text(json.dumps({
-                            "event": "subscribed",
-                            "channel": channel,
-                        }))
+                        await websocket.send_text(
+                            json.dumps(
+                                {
+                                    "event": "subscribed",
+                                    "channel": channel,
+                                }
+                            )
+                        )
 
                 elif action == "unsubscribe":
                     channel = msg.get("channel", "")
                     if channel:
                         await manager.unsubscribe(websocket, channel)
-                        await websocket.send_text(json.dumps({
-                            "event": "unsubscribed",
-                            "channel": channel,
-                        }))
+                        await websocket.send_text(
+                            json.dumps(
+                                {
+                                    "event": "unsubscribed",
+                                    "channel": channel,
+                                }
+                            )
+                        )
 
                 elif action == "ping":
-                    await websocket.send_text(json.dumps({
-                        "event": "pong",
-                        "active_connections": manager.active_connections,
-                    }))
+                    await websocket.send_text(
+                        json.dumps(
+                            {
+                                "event": "pong",
+                                "active_connections": manager.active_connections,
+                            }
+                        )
+                    )
 
                 elif action == "status":
-                    await websocket.send_text(json.dumps({
-                        "event": "status",
-                        "active_connections": manager.active_connections,
-                        "subscriptions": manager.subscription_counts,
-                    }))
+                    await websocket.send_text(
+                        json.dumps(
+                            {
+                                "event": "status",
+                                "active_connections": manager.active_connections,
+                                "subscriptions": manager.subscription_counts,
+                            }
+                        )
+                    )
 
             except json.JSONDecodeError:
-                await websocket.send_text(json.dumps({
-                    "event": "error",
-                    "message": "Invalid JSON",
-                }))
+                await websocket.send_text(
+                    json.dumps(
+                        {
+                            "event": "error",
+                            "message": "Invalid JSON",
+                        }
+                    )
+                )
 
     except WebSocketDisconnect:
         await manager.disconnect(websocket)

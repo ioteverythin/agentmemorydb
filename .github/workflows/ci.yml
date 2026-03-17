@@ -31,6 +31,8 @@ jobs:
   test-unit:
     name: Unit Tests
     runs-on: ubuntu-latest
+    env:
+      EMBEDDING_DIMENSION: "8"
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python
@@ -64,6 +66,7 @@ jobs:
     env:
       DATABASE_URL: "postgresql+asyncpg://agentmem:agentmem_secret@localhost:5432/agentmemorydb_test"
       ENVIRONMENT: test
+      EMBEDDING_DIMENSION: "8"
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python

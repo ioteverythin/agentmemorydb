@@ -5,19 +5,19 @@ All embedded tests use ``:memory:`` — no files written to disk.
 
 from __future__ import annotations
 
-import pytest
+from datetime import datetime
 from unittest.mock import MagicMock, patch
-from datetime import datetime, timezone
+
+import pytest
 
 import agentmemodb
 from agentmemodb.client import Client
-from agentmemodb.http_client import HttpClient
-from agentmemodb.types import Memory, MemoryVersion, SearchResult
 from agentmemodb.embeddings import DummyEmbedding, EmbeddingFunction
-from agentmemodb.masking import PIIMaskingEngine, MaskingResult
+from agentmemodb.http_client import HttpClient
+from agentmemodb.masking import PIIMaskingEngine
+from agentmemodb.memory_manager import LongTermMemory, MemoryManager, ShortTermMemory
 from agentmemodb.store import SQLiteStore
-from agentmemodb.memory_manager import ShortTermMemory, LongTermMemory, MemoryManager
-
+from agentmemodb.types import Memory, MemoryVersion, SearchResult
 
 # ═══════════════════════════════════════════════════════════════════
 #  1. Package top-level imports
@@ -130,6 +130,7 @@ class TestDummyEmbedding:
     def test_openai_import_error(self):
         with pytest.raises(ImportError, match="openai"):
             from agentmemodb.embeddings import OpenAIEmbedding
+
             with patch.dict("sys.modules", {"openai": None}):
                 OpenAIEmbedding()
 
@@ -255,7 +256,7 @@ class TestSQLiteStore:
 
     def test_versions(self):
         s = self._make_store()
-        m1, _ = s.upsert("u1", "k", "v1")
+        _m1, _ = s.upsert("u1", "k", "v1")
         s.upsert("u1", "k", "v2")
         m3, _ = s.upsert("u1", "k", "v3")
         versions = s.get_versions(m3.id)
@@ -391,7 +392,7 @@ class TestEmbeddedClient:
 
     def test_versions(self):
         with Client(path=":memory:") as db:
-            m1 = db.upsert("u1", "k", "v1")
+            db.upsert("u1", "k", "v1")
             db.upsert("u1", "k", "v2")
             m3 = db.upsert("u1", "k", "v3")
             vv = db.versions(m3.id)
@@ -425,7 +426,9 @@ class TestEmbeddedClient:
     def test_metadata(self):
         with Client(path=":memory:") as db:
             mem = db.upsert(
-                "u1", "k1", "test",
+                "u1",
+                "k1",
+                "test",
                 metadata={"source": "chat", "lang": "en"},
             )
             assert mem.metadata == {"source": "chat", "lang": "en"}
@@ -536,7 +539,7 @@ class TestEdgeCases:
 
     def test_special_chars_in_key(self):
         with Client(path=":memory:") as db:
-            mem = db.upsert("u1", "pref:lang/python:3.11", "test")
+            db.upsert("u1", "pref:lang/python:3.11", "test")
             fetched = db.get("u1", "pref:lang/python:3.11")
             assert fetched is not None
 
@@ -841,9 +844,8 @@ class TestMemoryManager:
 
     def test_new_thread(self):
         with MemoryManager("u1", path=":memory:") as mgr:
-            old_thread = mgr.short_term.thread_id
             mgr.short_term.add_user("Old thread message")
-            new_stm = mgr.new_thread("new-session")
+            mgr.new_thread("new-session")
             assert mgr.short_term.thread_id == "new-session"
             assert mgr.short_term.count() == 0
 

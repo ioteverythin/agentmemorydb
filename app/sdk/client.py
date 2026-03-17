@@ -18,8 +18,6 @@ Usage:
 
 from __future__ import annotations
 
-import uuid
-from datetime import datetime
 from typing import Any
 
 import httpx
@@ -62,7 +60,7 @@ class AgentMemoryDBClient:
     async def close(self) -> None:
         await self._client.aclose()
 
-    async def __aenter__(self) -> "AgentMemoryDBClient":
+    async def __aenter__(self) -> AgentMemoryDBClient:
         return self
 
     async def __aexit__(self, *args: Any) -> None:
@@ -99,9 +97,7 @@ class AgentMemoryDBClient:
 
     # ── Projects ────────────────────────────────────────────────
 
-    async def create_project(
-        self, user_id: str, name: str, description: str | None = None
-    ) -> dict:
+    async def create_project(self, user_id: str, name: str, description: str | None = None) -> dict:
         payload: dict[str, Any] = {"user_id": user_id, "name": name}
         if description:
             payload["description"] = description
@@ -279,16 +275,12 @@ class AgentMemoryDBClient:
     # ── Bulk Operations ─────────────────────────────────────────
 
     async def batch_upsert(self, memories: list[dict]) -> dict:
-        resp = await self._client.post(
-            "/api/v1/bulk/upsert", json={"memories": memories}
-        )
+        resp = await self._client.post("/api/v1/bulk/upsert", json={"memories": memories})
         self._raise_for_status(resp)
         return resp.json()
 
     async def batch_search(self, queries: list[dict]) -> dict:
-        resp = await self._client.post(
-            "/api/v1/bulk/search", json={"queries": queries}
-        )
+        resp = await self._client.post("/api/v1/bulk/search", json={"queries": queries})
         self._raise_for_status(resp)
         return resp.json()
 
@@ -313,9 +305,7 @@ class AgentMemoryDBClient:
         self._raise_for_status(resp)
         return resp.json()
 
-    async def shortest_path(
-        self, source_id: str, target_id: str, max_depth: int = 5
-    ) -> dict:
+    async def shortest_path(self, source_id: str, target_id: str, max_depth: int = 5) -> dict:
         resp = await self._client.post(
             "/api/v1/graph/shortest-path",
             json={
@@ -380,9 +370,7 @@ class AgentMemoryDBClient:
         self._raise_for_status(resp)
         return resp.json()
 
-    async def import_memories(
-        self, user_id: str, data: dict, *, strategy: str = "upsert"
-    ) -> dict:
+    async def import_memories(self, user_id: str, data: dict, *, strategy: str = "upsert") -> dict:
         resp = await self._client.post(
             "/api/v1/data/import",
             json={"user_id": user_id, "data": data, "strategy": strategy},
@@ -417,8 +405,6 @@ class AgentMemoryDBClient:
         return resp.json()
 
     async def auto_consolidate(self, user_id: str) -> dict:
-        resp = await self._client.post(
-            "/api/v1/consolidation/auto", params={"user_id": user_id}
-        )
+        resp = await self._client.post("/api/v1/consolidation/auto", params={"user_id": user_id})
         self._raise_for_status(resp)
         return resp.json()

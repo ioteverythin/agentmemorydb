@@ -56,10 +56,7 @@ class TimingMiddleware(BaseHTTPMiddleware):
 
 def configure_logging(log_level: str = "INFO") -> None:
     """Set up structured JSON-like logging for the application."""
-    fmt = (
-        "%(asctime)s | %(levelname)-8s | %(name)s | "
-        "req=%(request_id)s | %(message)s"
-    )
+    fmt = "%(asctime)s | %(levelname)-8s | %(name)s | req=%(request_id)s | %(message)s"
 
     class RequestIDFilter(logging.Filter):
         def filter(self, record: logging.LogRecord) -> bool:

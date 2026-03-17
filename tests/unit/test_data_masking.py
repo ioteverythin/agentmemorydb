@@ -7,22 +7,20 @@ import uuid
 from unittest.mock import patch
 
 import pytest
-import pytest_asyncio
 
+from app.services.masking_service import MaskingService
 from app.utils.masking import (
+    _BUILTIN_PATTERNS,
     Detection,
     MaskingResult,
     PIIMaskingEngine,
-    PIIPattern,
-    _BUILTIN_PATTERNS,
     get_default_engine,
 )
-from app.services.masking_service import MaskingService
-
 
 # ═══════════════════════════════════════════════════════════════════
 # § 1  PIIMaskingEngine — Pattern Detection
 # ═══════════════════════════════════════════════════════════════════
+
 
 class TestPIIEnginePatternDetection:
     """Test that each built-in pattern detects the expected PII."""
@@ -129,8 +127,8 @@ class TestPIIEnginePatternDetection:
 # § 2  PIIMaskingEngine — General Behavior
 # ═══════════════════════════════════════════════════════════════════
 
-class TestPIIEngineGeneral:
 
+class TestPIIEngineGeneral:
     def test_empty_text(self):
         engine = PIIMaskingEngine(enabled_patterns=["email"])
         result = engine.mask_text("")
@@ -181,16 +179,18 @@ class TestPIIEngineGeneral:
 # § 3  Custom Patterns
 # ═══════════════════════════════════════════════════════════════════
 
-class TestCustomPatterns:
 
+class TestCustomPatterns:
     def test_custom_regex(self):
         engine = PIIMaskingEngine(
             enabled_patterns=[],
-            custom_patterns=[{
-                "name": "employee_id",
-                "regex": r"EMP-\d{6}",
-                "token": "[EMPLOYEE_ID]",
-            }],
+            custom_patterns=[
+                {
+                    "name": "employee_id",
+                    "regex": r"EMP-\d{6}",
+                    "token": "[EMPLOYEE_ID]",
+                }
+            ],
         )
         result = engine.mask_text("Employee EMP-123456 is assigned")
         assert result.was_modified
@@ -200,10 +200,12 @@ class TestCustomPatterns:
     def test_custom_default_token(self):
         engine = PIIMaskingEngine(
             enabled_patterns=[],
-            custom_patterns=[{
-                "name": "project_code",
-                "regex": r"PRJ-[A-Z]{3}-\d{4}",
-            }],
+            custom_patterns=[
+                {
+                    "name": "project_code",
+                    "regex": r"PRJ-[A-Z]{3}-\d{4}",
+                }
+            ],
         )
         result = engine.mask_text("Working on PRJ-ABC-1234")
         assert "[PROJECT_CODE]" in result.masked_text
@@ -211,11 +213,13 @@ class TestCustomPatterns:
     def test_custom_plus_builtin(self):
         engine = PIIMaskingEngine(
             enabled_patterns=["email"],
-            custom_patterns=[{
-                "name": "employee_id",
-                "regex": r"EMP-\d{6}",
-                "token": "[EMPLOYEE_ID]",
-            }],
+            custom_patterns=[
+                {
+                    "name": "employee_id",
+                    "regex": r"EMP-\d{6}",
+                    "token": "[EMPLOYEE_ID]",
+                }
+            ],
         )
         result = engine.mask_text("EMP-999999 emailed at x@y.com")
         assert "[EMPLOYEE_ID]" in result.masked_text
@@ -226,8 +230,8 @@ class TestCustomPatterns:
 # § 4  mask_dict
 # ═══════════════════════════════════════════════════════════════════
 
-class TestMaskDict:
 
+class TestMaskDict:
     def test_mask_dict_all_string_values(self):
         engine = PIIMaskingEngine(enabled_patterns=["email"])
         data = {"name": "Josh", "contact": "josh@mail.com", "count": 42}
@@ -251,15 +255,19 @@ class TestMaskDict:
 # § 5  MaskingResult & Detection dataclasses
 # ═══════════════════════════════════════════════════════════════════
 
-class TestMaskingResult:
 
+class TestMaskingResult:
     def test_patterns_detected_deduped(self):
         r = MaskingResult(
             original_text="test",
             masked_text="test",
             detections=[
-                Detection(pattern_name="email", token="[EMAIL]", start=0, end=5, matched_text="a@b.c"),
-                Detection(pattern_name="email", token="[EMAIL]", start=10, end=15, matched_text="d@e.f"),
+                Detection(
+                    pattern_name="email", token="[EMAIL]", start=0, end=5, matched_text="a@b.c"
+                ),
+                Detection(
+                    pattern_name="email", token="[EMAIL]", start=10, end=15, matched_text="d@e.f"
+                ),
             ],
             was_modified=True,
         )
@@ -270,8 +278,8 @@ class TestMaskingResult:
 # § 6  get_default_engine factory
 # ═══════════════════════════════════════════════════════════════════
 
-class TestGetDefaultEngine:
 
+class TestGetDefaultEngine:
     def test_disabled_returns_empty(self):
         with patch("app.core.settings") as mock_settings:
             mock_settings.enable_data_masking = False
@@ -310,10 +318,11 @@ class TestGetDefaultEngine:
 # § 7  Settings integration
 # ═══════════════════════════════════════════════════════════════════
 
-class TestMaskingSettings:
 
+class TestMaskingSettings:
     def test_default_settings(self):
         from app.core import Settings
+
         s = Settings(
             database_url="sqlite+aiosqlite:///:memory:",
         )
@@ -324,6 +333,7 @@ class TestMaskingSettings:
 
     def test_settings_enable(self):
         from app.core import Settings
+
         s = Settings(
             database_url="sqlite+aiosqlite:///:memory:",
             enable_data_masking=True,
@@ -338,6 +348,7 @@ class TestMaskingSettings:
 # § 8  Pipeline integration — _mask_if_enabled helpers
 # ═══════════════════════════════════════════════════════════════════
 
+
 class TestPipelineMasking:
     """Test that the _mask_if_enabled helpers in services work correctly."""
 
@@ -346,6 +357,7 @@ class TestPipelineMasking:
             engine = PIIMaskingEngine(enabled_patterns=["email"])
             mock_factory.return_value = engine
             from app.services.memory_service import _mask_if_enabled
+
             result = _mask_if_enabled("Contact josh@mail.com")
             assert result == "Contact [EMAIL]"
 
@@ -354,6 +366,7 @@ class TestPipelineMasking:
             engine = PIIMaskingEngine(enabled_patterns=["phone"])
             mock_factory.return_value = engine
             from app.services.event_service import _mask_if_enabled
+
             result = _mask_if_enabled("Call 555-123-4567 now")
             assert result == "Call [PHONE] now"
 
@@ -362,6 +375,7 @@ class TestPipelineMasking:
             engine = PIIMaskingEngine(enabled_patterns=["ssn"])
             mock_factory.return_value = engine
             from app.services.observation_service import _mask_if_enabled
+
             result = _mask_if_enabled("SSN is 123-45-6789")
             assert result == "SSN is [SSN]"
 
@@ -370,6 +384,7 @@ class TestPipelineMasking:
             engine = PIIMaskingEngine(enabled_patterns=["email"])
             mock_factory.return_value = engine
             from app.services.memory_service import _mask_if_enabled
+
             assert _mask_if_enabled(None) is None
 
     def test_mask_helper_returns_unchanged_when_no_pii(self):
@@ -377,6 +392,7 @@ class TestPipelineMasking:
             engine = PIIMaskingEngine(enabled_patterns=["email"])
             mock_factory.return_value = engine
             from app.services.memory_service import _mask_if_enabled
+
             assert _mask_if_enabled("No PII here") == "No PII here"
 
     def test_mask_helper_returns_unchanged_when_disabled(self):
@@ -384,6 +400,7 @@ class TestPipelineMasking:
             engine = PIIMaskingEngine(enabled_patterns=[])
             mock_factory.return_value = engine
             from app.services.memory_service import _mask_if_enabled
+
             assert _mask_if_enabled("josh@mail.com") == "josh@mail.com"
 
 
@@ -391,10 +408,11 @@ class TestPipelineMasking:
 # § 9  MaskingLog model
 # ═══════════════════════════════════════════════════════════════════
 
-class TestMaskingLogModel:
 
+class TestMaskingLogModel:
     def test_model_fields(self):
         from app.models.masking_log import MaskingLog
+
         log = MaskingLog(
             entity_type="memory",
             entity_id=uuid.uuid4(),
@@ -410,6 +428,7 @@ class TestMaskingLogModel:
 
     def test_model_tablename(self):
         from app.models.masking_log import MaskingLog
+
         assert MaskingLog.__tablename__ == "masking_logs"
 
 
@@ -417,15 +436,17 @@ class TestMaskingLogModel:
 # § 10  Masking schemas
 # ═══════════════════════════════════════════════════════════════════
 
-class TestMaskingSchemas:
 
+class TestMaskingSchemas:
     def test_test_request(self):
         from app.schemas.masking import MaskingTestRequest
+
         req = MaskingTestRequest(text="hello@world.com")
         assert req.text == "hello@world.com"
 
     def test_test_response(self):
         from app.schemas.masking import MaskingTestResponse
+
         resp = MaskingTestResponse(
             original_text="hello@world.com",
             masked_text="[EMAIL]",
@@ -438,6 +459,7 @@ class TestMaskingSchemas:
 
     def test_config_response(self):
         from app.schemas.masking import MaskingConfigResponse
+
         resp = MaskingConfigResponse(
             enabled=True,
             active_patterns=["email", "phone"],
@@ -449,6 +471,7 @@ class TestMaskingSchemas:
 
     def test_stats_response(self):
         from app.schemas.masking import MaskingStatsResponse
+
         resp = MaskingStatsResponse(
             total_masking_actions=42,
             by_entity_type={"memory": 30, "event": 12},
@@ -462,14 +485,22 @@ class TestMaskingSchemas:
 # § 11  Builtin patterns completeness
 # ═══════════════════════════════════════════════════════════════════
 
-class TestBuiltinPatterns:
 
+class TestBuiltinPatterns:
     def test_all_expected_patterns_registered(self):
-        expected = {"ssn", "credit_card", "email", "phone", "ip_address", "us_passport", "date_of_birth"}
+        expected = {
+            "ssn",
+            "credit_card",
+            "email",
+            "phone",
+            "ip_address",
+            "us_passport",
+            "date_of_birth",
+        }
         assert expected == set(_BUILTIN_PATTERNS.keys())
 
     def test_each_pattern_has_token(self):
-        for name, pattern in _BUILTIN_PATTERNS.items():
+        for _name, pattern in _BUILTIN_PATTERNS.items():
             assert pattern.token.startswith("[")
             assert pattern.token.endswith("]")
 
@@ -479,16 +510,20 @@ class TestBuiltinPatterns:
         # 123-45-6789 could match SSN or be part of a phone-like sequence
         result = engine.mask_text("SSN: 123-45-6789")
         assert "[SSN]" in result.masked_text
-        assert result.detection_count if hasattr(result, "detection_count") else len(result.detections) >= 1
+        assert (
+            result.detection_count
+            if hasattr(result, "detection_count")
+            else len(result.detections) >= 1
+        )
 
 
 # ═══════════════════════════════════════════════════════════════════
 # § 12  MaskingService (async)
 # ═══════════════════════════════════════════════════════════════════
 
+
 @pytest.mark.asyncio
 class TestMaskingServiceAsync:
-
     async def test_mask_content_when_enabled(self, unit_session):
         with patch("app.services.masking_service.settings") as mock_settings:
             mock_settings.enable_data_masking = True
@@ -554,8 +589,8 @@ class TestMaskingServiceAsync:
 # § 13  Edge cases & regression
 # ═══════════════════════════════════════════════════════════════════
 
-class TestEdgeCases:
 
+class TestEdgeCases:
     def test_text_is_only_pii(self):
         engine = PIIMaskingEngine(enabled_patterns=["email"])
         result = engine.mask_text("josh@example.com")

@@ -9,11 +9,11 @@ from __future__ import annotations
 import asyncio
 import json
 import uuid
-from datetime import datetime, timezone
-from typing import Any
 from collections import defaultdict
+from datetime import UTC, datetime
+from typing import Any
 
-from fastapi import WebSocket, WebSocketDisconnect
+from fastapi import WebSocket
 
 
 class ConnectionManager:
@@ -37,7 +37,7 @@ class ConnectionManager:
         await websocket.accept()
         async with self._lock:
             self._connections.add(websocket)
-            for channel in (channels or ["global"]):
+            for channel in channels or ["global"]:
                 self._subscriptions[channel].add(websocket)
 
     async def disconnect(self, websocket: WebSocket) -> None:
@@ -60,7 +60,7 @@ class ConnectionManager:
     async def broadcast(self, event: MemoryEvent) -> None:
         """Broadcast a memory event to all relevant subscribers."""
         payload = json.dumps(event.to_dict(), default=str)
-        channels_to_notify = set(event.channels + ["global"])
+        channels_to_notify = set([*event.channels, "global"])
 
         dead_connections: set[WebSocket] = set()
 
@@ -102,7 +102,7 @@ class MemoryEvent:
         self.event_type = event_type
         self.data = data
         self.channels = channels or []
-        self.timestamp = datetime.now(timezone.utc).isoformat()
+        self.timestamp = datetime.now(UTC).isoformat()
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -116,8 +116,10 @@ class MemoryEvent:
 
 # ── Predefined Event Types ─────────────────────────────────────
 
+
 class MemoryEventTypes:
     """Standard memory event types for real-time streaming."""
+
     MEMORY_CREATED = "memory.created"
     MEMORY_UPDATED = "memory.updated"
     MEMORY_ARCHIVED = "memory.archived"

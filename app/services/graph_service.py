@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 from collections import deque
-from typing import Sequence
+from collections.abc import Sequence
 
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -159,10 +159,10 @@ class GraphTraversalService:
                 )
 
                 if neighbour_id == target_id:
-                    return path + [target_id]
+                    return [*path, target_id]
 
                 if neighbour_id not in visited:
                     visited.add(neighbour_id)
-                    queue.append((neighbour_id, path + [neighbour_id]))
+                    queue.append((neighbour_id, [*path, neighbour_id]))
 
         return None

@@ -71,8 +71,6 @@ class TestImportExport:
         }
 
         ie_svc = ImportExportService(unit_session)
-        result = await ie_svc.import_memories(
-            user_id, import_data, strategy="upsert"
-        )
+        result = await ie_svc.import_memories(user_id, import_data, strategy="upsert")
         assert result["imported"] == 1
         assert result["errors"] == 0

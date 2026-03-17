@@ -19,7 +19,6 @@ References:
 
 from __future__ import annotations
 
-import uuid
 from typing import Any
 
 import httpx
@@ -106,7 +105,7 @@ class AgentMemoryDBStore:
     async def close(self) -> None:
         await self._client.aclose()
 
-    async def __aenter__(self) -> "AgentMemoryDBStore":
+    async def __aenter__(self) -> AgentMemoryDBStore:
         return self
 
     async def __aexit__(self, *args: Any) -> None:
