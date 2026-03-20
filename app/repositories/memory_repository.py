@@ -6,7 +6,7 @@ import uuid
 from collections.abc import Sequence
 from datetime import UTC, datetime
 
-from sqlalchemy import and_, select, text
+from sqlalchemy import Float, and_, cast, null, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.memory import Memory
@@ -144,7 +144,7 @@ class MemoryRepository(BaseRepository[Memory]):
         else:
             # Metadata-only fallback — order by recency
             stmt = (
-                select(Memory, text("NULL::float AS similarity"))
+                select(Memory, cast(null(), Float).label("similarity"))
                 .where(and_(*conditions))
                 .order_by(Memory.updated_at.desc())
                 .limit(limit)
