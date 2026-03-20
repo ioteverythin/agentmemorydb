@@ -10,6 +10,7 @@ env:
   PYTHON_VERSION: "3.11"
 
 jobs:
+  # ── Job 1: Lint & Format ───────────────────────────────────────
   lint:
     name: Lint & Format Check
     runs-on: ubuntu-latest
@@ -28,10 +29,13 @@ jobs:
       - name: Run ruff format check
         run: ruff format --check app/ tests/
 
+  # ── Job 2: Unit Tests (in-memory SQLite, no Docker needed) ─────
   test-unit:
     name: Unit Tests
     runs-on: ubuntu-latest
     env:
+      # Match the DummyEmbeddingProvider(dim=8) used in conftest.py so
+      # Vector(settings.embedding_dimension) doesn't reject 8-dim vectors.
       EMBEDDING_DIMENSION: "8"
     steps:
       - uses: actions/checkout@v4
@@ -44,8 +48,11 @@ jobs:
           pip install --upgrade pip
           pip install -e ".[dev]"
       - name: Run unit tests
-        run: pytest tests/unit/ -v --tb=short -m unit
+        # Run ALL tests under tests/unit/ — not just those explicitly
+        # marked @pytest.mark.unit (many tests lack the marker).
+        run: pytest tests/unit/ -v --tb=short --asyncio-mode=auto
 
+  # ── Job 3: Integration Tests (pgvector PostgreSQL) ─────────────
   test-integration:
     name: Integration Tests
     runs-on: ubuntu-latest
@@ -80,4 +87,6 @@ jobs:
       - name: Run migrations
         run: alembic upgrade head
       - name: Run integration tests
-        run: pytest tests/integration/ -v --tb=short -m integration
+        # Run ALL tests under tests/integration/ — not just those
+        # explicitly marked @pytest.mark.integration.
+        run: pytest tests/integration/ -v --tb=short --asyncio-mode=auto
