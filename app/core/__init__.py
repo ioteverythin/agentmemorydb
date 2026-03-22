@@ -28,6 +28,12 @@ class Settings(BaseSettings):
     embedding_dimension: int = 1536
     vector_index_lists: int = 100
 
+    # ── Vector index (HNSW recommended, IVFFlat still supported) ─
+    vector_index_type: str = "hnsw"  # "hnsw" or "ivfflat"
+    hnsw_m: int = 16  # max bi-directional links per node
+    hnsw_ef_construction: int = 64  # size of dynamic candidate list during build
+    hnsw_ef_search: int = 40  # size of dynamic candidate list during search
+
     # ── Retrieval ────────────────────────────────────────────────
     default_top_k: int = 10
 

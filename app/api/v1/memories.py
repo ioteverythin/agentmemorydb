@@ -1,10 +1,12 @@
-"""Memory endpoints — upsert, search, status, versions, links."""
+"""Memory endpoints — upsert, search, stream-search, status, versions, links."""
 
 from __future__ import annotations
 
+import json
 import uuid
 
 from fastapi import APIRouter, Depends, Query
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_session
@@ -63,6 +65,52 @@ async def search_memories(
     """
     svc = RetrievalService(session)
     return await svc.search(data)
+
+
+@router.post("/stream-search")
+async def stream_search_memories(
+    data: MemorySearchRequest,
+    session: AsyncSession = Depends(get_session),
+) -> StreamingResponse:
+    """SSE streaming search — emits one ``data:`` event per ranked result.
+
+    For large ``top_k`` values or latency-sensitive agents, streaming lets
+    consumers start processing the highest-ranked memories before the full
+    result set is computed.
+
+    Event format::
+
+        data: {"memory": {...}, "score": {...}}   (one per result)
+        ...
+        event: done
+        data: {"total_candidates": N, "strategy": "hybrid_vector"}
+    """
+    svc = RetrievalService(session)
+    response = await svc.search(data)
+
+    async def _generate():  # type: ignore[return]
+        for result in response.results:
+            payload = {
+                "memory": json.loads(result.memory.model_dump_json()),
+                "score": json.loads(result.score.model_dump_json()) if result.score else None,
+            }
+            yield f"data: {json.dumps(payload)}\n\n"
+
+        done_payload = {
+            "total_candidates": response.total_candidates,
+            "strategy": response.strategy,
+        }
+        yield f"event: done\ndata: {json.dumps(done_payload)}\n\n"
+
+    return StreamingResponse(
+        _generate(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 @router.patch("/{memory_id}/status", response_model=MemoryResponse)
