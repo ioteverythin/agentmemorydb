@@ -47,6 +47,7 @@ jobs:
         run: |
           pip install --upgrade pip
           pip install -e ".[dev]"
+          pip install langchain-core>=0.2.0
       - name: Run unit tests
         # Run ALL tests under tests/unit/ — not just those explicitly
         # marked @pytest.mark.unit (many tests lack the marker).

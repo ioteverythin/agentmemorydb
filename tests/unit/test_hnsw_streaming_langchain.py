@@ -241,6 +241,9 @@ class FakeResponse:
         return self._json_data
 
 
+langchain_core = pytest.importorskip("langchain_core", reason="langchain-core not installed")
+
+
 @pytest.mark.unit
 class TestAgentMemoryDBChatMessageHistory:
     """Test the LangChain ChatMessageHistory adapter."""
