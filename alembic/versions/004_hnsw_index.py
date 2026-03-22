@@ -41,17 +41,23 @@ VECTOR_INDEX_LISTS = int(os.environ.get("VECTOR_INDEX_LISTS", "100"))
 
 
 def upgrade() -> None:
-    """Replace IVFFlat with HNSW index (CONCURRENTLY = zero-downtime)."""
+    """Replace IVFFlat with HNSW index.
+
+    NOTE: We intentionally do NOT use ``CONCURRENTLY`` here because Alembic
+    runs each migration inside a transaction and PostgreSQL forbids
+    ``CREATE INDEX CONCURRENTLY`` inside a transaction block.  For large
+    production tables you can run the CREATE INDEX CONCURRENTLY statement
+    manually outside of Alembic and then mark the migration as applied
+    with ``alembic stamp 004_hnsw_index``.
+    """
 
     # Drop existing IVFFlat index
     op.execute("DROP INDEX IF EXISTS ix_memories_embedding_ivfflat")
 
-    # Create HNSW index CONCURRENTLY — requires running outside a
-    # transaction block.  Alembic's --transaction-per-migration flag
-    # must be disabled, or call op.execute() with execution_options.
+    # Create HNSW index (transactional — safe inside Alembic)
     op.execute(
         f"""
-        CREATE INDEX CONCURRENTLY IF NOT EXISTS ix_memories_embedding_hnsw
+        CREATE INDEX IF NOT EXISTS ix_memories_embedding_hnsw
         ON memories
         USING hnsw (embedding vector_cosine_ops)
         WITH (m = {HNSW_M}, ef_construction = {HNSW_EF_CONSTRUCTION})
