@@ -68,15 +68,36 @@ class Memory(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
 
-    __table_args__ = (
-        Index("ix_memories_user_key", "user_id", "memory_key"),
-        Index("ix_memories_scope_status", "scope", "status"),
-        Index("ix_memories_payload_gin", "payload", postgresql_using="gin"),
-        Index(
+    @staticmethod
+    def _build_vector_index() -> Index:
+        """Build the vector index based on configuration.
+
+        HNSW is the default — better QPS vs IVFFlat at equivalent recall,
+        no training step, and handles incremental inserts better.
+        """
+        if settings.vector_index_type.lower() == "hnsw":
+            return Index(
+                "ix_memories_embedding_hnsw",
+                "embedding",
+                postgresql_using="hnsw",
+                postgresql_with={
+                    "m": settings.hnsw_m,
+                    "ef_construction": settings.hnsw_ef_construction,
+                },
+                postgresql_ops={"embedding": "vector_cosine_ops"},
+            )
+        # Fallback: IVFFlat
+        return Index(
             "ix_memories_embedding_ivfflat",
             "embedding",
             postgresql_using="ivfflat",
             postgresql_with={"lists": settings.vector_index_lists},
             postgresql_ops={"embedding": "vector_cosine_ops"},
-        ),
+        )
+
+    __table_args__ = (
+        Index("ix_memories_user_key", "user_id", "memory_key"),
+        Index("ix_memories_scope_status", "scope", "status"),
+        Index("ix_memories_payload_gin", "payload", postgresql_using="gin"),
+        _build_vector_index.__func__(),  # type: ignore[attr-defined]
     )
