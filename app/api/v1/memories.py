@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_session
 from app.schemas.memory import (
+    FeedbackRequest,
     MemoryResponse,
     MemorySearchRequest,
     MemorySearchResponse,
@@ -19,6 +20,7 @@ from app.schemas.memory import (
     MemoryVersionResponse,
 )
 from app.schemas.memory_link import MemoryLinkResponse
+from app.services.feedback_service import FeedbackService
 from app.services.memory_service import MemoryService
 from app.services.retrieval_service import RetrievalService
 
@@ -156,6 +158,36 @@ async def list_memory_versions(
     svc = MemoryService(session)
     versions = await svc.get_versions(memory_id)
     return [MemoryVersionResponse.model_validate(v) for v in versions]
+
+
+@router.post("/{memory_id}/feedback", status_code=200)
+async def record_memory_feedback(
+    memory_id: uuid.UUID,
+    data: FeedbackRequest,
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    """Record explicit utility feedback (+1/−1) for a retrieved memory.
+
+    Adjusts the memory’s importance_score by a configurable step (default
+    0.05) in the direction of the vote.  Positive votes surface the memory
+    higher in future retrievals; negative votes suppress it.
+
+    This implements the MemRL insight that *utility* feedback is a stronger
+    training signal than passive access-frequency tracking alone.
+    """
+    svc = FeedbackService(session)
+    try:
+        return await svc.record_feedback(
+            memory_id=memory_id,
+            user_id=data.user_id,
+            vote=data.vote,
+            run_id=data.run_id,
+            context=data.context,
+        )
+    except LookupError as exc:
+        from fastapi import HTTPException
+
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @router.get("/{memory_id}/links", response_model=list[MemoryLinkResponse])
