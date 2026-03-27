@@ -118,10 +118,17 @@ class MemoryVersionResponse(OrmBase):
     version: int
     content: str
     content_hash: str
-    payload: dict[str, Any] | None = None
-    confidence: float
-    importance_score: float
-    source_type: str
-    status: str
-    created_at: datetime
-    superseded_at: datetime
+
+
+class FeedbackRequest(BaseModel):
+    """Explicit utility feedback for a retrieved memory.
+
+    Inspired by MemRL’s RL reward signal.  Agents call this after using
+    (or failing to use) a memory to drive importance score adjustment.
+    """
+
+    user_id: uuid.UUID
+    vote: int = Field(..., description="+1 = useful, -1 = not useful", ge=-1, le=1)
+    run_id: uuid.UUID | None = None
+    context: str | None = Field(default=None, max_length=512)
+

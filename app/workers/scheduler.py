@@ -106,6 +106,12 @@ class MaintenanceScheduler:
                 interval_minutes=settings.scheduler_prune_interval,
                 enabled=settings.scheduler_enable_prune,
             ),
+            ScheduledJob(
+                name="synthesize_user_profiles",
+                handler=self._synthesize_user_profiles,
+                interval_minutes=settings.scheduler_profile_interval,
+                enabled=settings.scheduler_enable_profiling,
+            ),
         ]
 
     async def start(self) -> None:
@@ -288,6 +294,54 @@ class MaintenanceScheduler:
             )
             await session.commit()
             return {"pruned_count": result.rowcount, "retention_days": retention_days}
+
+
+    async def _synthesize_user_profiles(self) -> dict[str, Any]:
+        """Synthesise a __profile__ semantic memory per user from recent activity.
+
+        Implements the EverMemOS Semantic Consolidation pattern as a lightweight
+        scheduled job.  No LLM is required — the UserProfileService handles
+        narrative generation opportunistically when OPENAI_API_KEY is set.
+        """
+        from sqlalchemy import text
+
+        from app.services.user_profile_service import UserProfileService
+
+        lookback = settings.scheduler_profile_lookback_days
+
+        async with async_session_factory() as session:
+            result = await session.execute(
+                text("""
+                    SELECT DISTINCT user_id FROM memories
+                    WHERE status = 'active'
+                      AND memory_type IN ('episodic', 'semantic', 'procedural')
+                      AND memory_key != '__profile__'
+                      AND updated_at > NOW() - INTERVAL ':days days'
+                    LIMIT 200
+                """.replace(":days", str(lookback)))
+            )
+            user_ids = [row[0] for row in result.fetchall()]
+
+            svc = UserProfileService(session)
+            successes = 0
+            skipped = 0
+            for uid in user_ids:
+                try:
+                    res = await svc.synthesize(user_id=uid)
+                    if res.get("status") == "ok":
+                        successes += 1
+                    else:
+                        skipped += 1
+                except Exception as exc:
+                    logger.warning("Profile synthesis failed for user %s: %s", uid, exc)
+
+            await session.commit()
+            return {
+                "users_processed": len(user_ids),
+                "profiles_synthesized": successes,
+                "skipped": skipped,
+                "lookback_days": lookback,
+            }
 
 
 # ── Singleton ────────────────────────────────────────────────────

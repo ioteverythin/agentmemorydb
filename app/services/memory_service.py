@@ -17,6 +17,7 @@ from app.models.memory_version import MemoryVersion
 from app.repositories.memory_repository import MemoryRepository
 from app.schemas.memory import MemoryStatusUpdate, MemoryUpsert
 from app.utils.embedding_provider import get_embedding_provider
+from app.utils.entity_extractor import extract_entities, merge_entities
 from app.utils.hashing import compute_content_hash
 from app.utils.masking import get_default_engine
 
@@ -69,7 +70,16 @@ class MemoryService:
             data = data.model_copy(update={"content": masked_content})
 
         content_hash = compute_content_hash(data.content)
-
+        # ── Write-time entity extraction (MAGMA-inspired) ───────
+        # Skip for system-generated profile memories to avoid noise.
+        if data.content and data.memory_key != "__profile__":
+            entities = extract_entities(data.content)
+            if entities:
+                base_payload: dict = dict(data.payload) if data.payload else {}
+                base_payload["__entities__"] = merge_entities(
+                    base_payload.get("__entities__"), entities
+                )
+                data = data.model_copy(update={"payload": base_payload})
         # ── Auto-generate embedding if not provided ──────────
         if data.embedding is None and data.content:
             try:

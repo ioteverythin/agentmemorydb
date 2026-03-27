@@ -99,6 +99,11 @@ class Settings(BaseSettings):
     scheduler_enable_recency: bool = True
     scheduler_enable_cleanup: bool = True
     scheduler_enable_prune: bool = True
+    # ── Auto User Profiling (EverMemOS-inspired) ─────────────
+    scheduler_profile_interval: int = 240   # minutes between profiling runs
+    scheduler_enable_profiling: bool = True
+    scheduler_profile_lookback_days: int = 30  # how far back to read episodic memories
+    scheduler_profile_max_memories: int = 50   # max memories fed into profile synthesis
 
     # ── Row Level Security ───────────────────────────────────
     enable_rls: bool = False  # Enable after running 004_add_rls migration
