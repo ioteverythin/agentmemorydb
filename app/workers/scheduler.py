@@ -31,12 +31,14 @@ class ScheduledJob:
         self,
         name: str,
         handler,
-        interval_minutes: int,
+        interval_seconds: int,
         enabled: bool = True,
     ) -> None:
         self.name = name
         self.handler = handler
-        self.interval_minutes = interval_minutes
+        # Interval is stored in seconds to match the ``scheduler_*_interval``
+        # settings, which are documented and named in seconds.
+        self.interval_seconds = interval_seconds
         self.enabled = enabled
         self.last_run: datetime | None = None
         self.run_count: int = 0
@@ -46,7 +48,7 @@ class ScheduledJob:
     def next_run(self) -> datetime | None:
         if self.last_run is None:
             return datetime.now(UTC)
-        return self.last_run + timedelta(minutes=self.interval_minutes)
+        return self.last_run + timedelta(seconds=self.interval_seconds)
 
     @property
     def is_due(self) -> bool:
@@ -79,31 +81,31 @@ class MaintenanceScheduler:
             ScheduledJob(
                 name="consolidate_duplicates",
                 handler=self._consolidate_duplicates,
-                interval_minutes=settings.scheduler_consolidation_interval,
+                interval_seconds=settings.scheduler_consolidation_interval,
                 enabled=settings.scheduler_enable_consolidation,
             ),
             ScheduledJob(
                 name="archive_stale",
                 handler=self._archive_stale_memories,
-                interval_minutes=settings.scheduler_archive_interval,
+                interval_seconds=settings.scheduler_archive_interval,
                 enabled=settings.scheduler_enable_archive,
             ),
             ScheduledJob(
                 name="recompute_recency",
                 handler=self._recompute_recency_scores,
-                interval_minutes=settings.scheduler_recency_interval,
+                interval_seconds=settings.scheduler_recency_interval,
                 enabled=settings.scheduler_enable_recency,
             ),
             ScheduledJob(
                 name="cleanup_expired",
                 handler=self._cleanup_expired_memories,
-                interval_minutes=settings.scheduler_cleanup_interval,
+                interval_seconds=settings.scheduler_cleanup_interval,
                 enabled=settings.scheduler_enable_cleanup,
             ),
             ScheduledJob(
                 name="prune_access_logs",
                 handler=self._prune_access_logs,
-                interval_minutes=settings.scheduler_prune_interval,
+                interval_seconds=settings.scheduler_prune_interval,
                 enabled=settings.scheduler_enable_prune,
             ),
         ]
@@ -143,7 +145,7 @@ class MaintenanceScheduler:
                 {
                     "name": job.name,
                     "enabled": job.enabled,
-                    "interval_minutes": job.interval_minutes,
+                    "interval_seconds": job.interval_seconds,
                     "last_run": str(job.last_run) if job.last_run else None,
                     "next_run": str(job.next_run) if job.next_run else None,
                     "run_count": job.run_count,
@@ -283,7 +285,7 @@ class MaintenanceScheduler:
 
         async with async_session_factory() as session:
             result = await session.execute(
-                text("DELETE FROM memory_access_logs WHERE accessed_at < :cutoff"),
+                text("DELETE FROM memory_access_logs WHERE created_at < :cutoff"),
                 {"cutoff": cutoff},
             )
             await session.commit()

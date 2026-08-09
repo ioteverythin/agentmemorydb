@@ -19,6 +19,7 @@ from app.schemas.memory import (
 )
 from app.services.access_tracking_service import AccessTrackingService
 from app.utils.embedding_provider import get_embedding_provider
+from app.utils.rrf import reciprocal_rank_fusion
 from app.utils.scoring import compute_final_score, compute_recency_score
 
 
@@ -43,7 +44,16 @@ class RetrievalService:
         self._access_tracker = AccessTrackingService(session)
 
     async def search(self, req: MemorySearchRequest) -> MemorySearchResponse:
-        """Execute hybrid search and return scored, auditable results."""
+        """Execute hybrid search and return scored, auditable results.
+
+        When a ``query_text`` is present and the backend supports full-text
+        search, dense (vector) and sparse (BM25/FTS) candidate rankings are
+        combined with Reciprocal Rank Fusion, then re-ranked by the composite
+        governance score (recency, importance, authority, confidence). This
+        surfaces both semantically-similar and lexically-exact matches, and
+        lets high-authority/recent memories outside the top vector neighbours
+        still win.
+        """
 
         # ── Resolve embedding ───────────────────────────────────
         embedding = req.embedding
@@ -52,23 +62,64 @@ class RetrievalService:
             vectors = await provider.embed([req.query_text])
             embedding = vectors[0] if vectors else None
 
-        # ── Database search ─────────────────────────────────────
-        raw_results = await self._memory_repo.search(
+        overfetch = max(req.top_k * settings.retrieval_overfetch_multiplier, req.top_k)
+
+        # ── Dense (vector / metadata) candidates ────────────────
+        vector_results = await self._memory_repo.search(
             user_id=req.user_id,
             project_id=req.project_id,
             embedding=embedding,
             memory_types=req.memory_types,
             scopes=req.scopes,
+            layers=req.layers,
             status=req.status,
             min_confidence=req.min_confidence,
             min_importance=req.min_importance,
             include_expired=req.include_expired,
-            limit=req.top_k * 2,  # over-fetch for re-ranking
+            limit=overfetch,
         )
 
-        # ── Score & re-rank ─────────────────────────────────────
+        # ── Sparse (full-text / BM25) candidates ────────────────
+        fts_results: list[tuple[Memory, float]] = []
+        if req.use_fulltext and req.query_text and settings.enable_fulltext_search:
+            fts_results = await self._memory_repo.search_fulltext(
+                user_id=req.user_id,
+                query_text=req.query_text,
+                project_id=req.project_id,
+                memory_types=req.memory_types,
+                scopes=req.scopes,
+                layers=req.layers,
+                status=req.status,
+                min_confidence=req.min_confidence,
+                min_importance=req.min_importance,
+                include_expired=req.include_expired,
+                limit=overfetch,
+            )
+
+        # ── Merge candidate pools ───────────────────────────────
+        memory_by_id: dict = {}
+        sim_by_id: dict = {}
+        for memory, vec_sim in vector_results:
+            memory_by_id[memory.id] = memory
+            sim_by_id[memory.id] = vec_sim
+        for memory, _rank in fts_results:
+            memory_by_id.setdefault(memory.id, memory)
+            sim_by_id.setdefault(memory.id, None)
+
+        # ── Reciprocal Rank Fusion (only when both signals exist) ─
+        rrf_scores: dict = {}
+        used_rrf = bool(fts_results)
+        if used_rrf:
+            vec_ids = [m.id for m, _ in vector_results]
+            fts_ids = [m.id for m, _ in fts_results]
+            rrf_scores = reciprocal_rank_fusion([vec_ids, fts_ids], k=settings.rrf_k)
+        max_rrf = max(rrf_scores.values()) if rrf_scores else 0.0
+
+        # ── Composite score & re-rank ───────────────────────────
+        w_ft = settings.fulltext_weight
         scored: list[tuple[Memory, float, dict]] = []
-        for memory, vec_sim in raw_results:
+        for mem_id, memory in memory_by_id.items():
+            vec_sim = sim_by_id.get(mem_id)
             recency = compute_recency_score(memory.updated_at)
             final, breakdown = compute_final_score(
                 vector_similarity=vec_sim,
@@ -77,14 +128,27 @@ class RetrievalService:
                 authority_level=memory.authority_level,
                 confidence=memory.confidence,
             )
-            scored.append((memory, final, breakdown))
+            sort_score = final
+            if used_rrf:
+                rrf_norm = (rrf_scores.get(mem_id, 0.0) / max_rrf) if max_rrf > 0 else 0.0
+                breakdown["rrf_score"] = round(rrf_scores.get(mem_id, 0.0), 6)
+                # Blend: composite governance score plus a full-text nudge.
+                sort_score = (1.0 - w_ft) * final + w_ft * rrf_norm
+            scored.append((memory, sort_score, breakdown))
 
-        # Sort descending by final score
+        # Sort descending by (blended) score
         scored.sort(key=lambda x: x[1], reverse=True)
         scored = scored[: req.top_k]
 
+        raw_results = list(memory_by_id.values())
+
         # ── Build response ──────────────────────────────────────
-        strategy = "hybrid_vector" if embedding is not None else "metadata_only"
+        if used_rrf:
+            strategy = "hybrid_rrf"
+        elif embedding is not None:
+            strategy = "hybrid_vector"
+        else:
+            strategy = "metadata_only"
         results: list[MemorySearchResult] = []
         log_items: list[RetrievalLogItem] = []
 

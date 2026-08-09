@@ -537,7 +537,7 @@ class TestScheduledJob:
         job = ScheduledJob(
             name="test_job",
             handler=AsyncMock(),
-            interval_minutes=60,
+            interval_seconds=60,
             enabled=True,
         )
         assert job.is_due is True
@@ -548,7 +548,7 @@ class TestScheduledJob:
         job = ScheduledJob(
             name="disabled",
             handler=AsyncMock(),
-            interval_minutes=60,
+            interval_seconds=60,
             enabled=False,
         )
         assert job.is_due is False
@@ -557,7 +557,7 @@ class TestScheduledJob:
         job = ScheduledJob(
             name="recent",
             handler=AsyncMock(),
-            interval_minutes=60,
+            interval_seconds=60,
         )
         job.last_run = datetime.now(UTC)
         assert job.is_due is False
@@ -566,7 +566,7 @@ class TestScheduledJob:
         job = ScheduledJob(
             name="overdue",
             handler=AsyncMock(),
-            interval_minutes=60,
+            interval_seconds=60,
         )
         job.last_run = datetime.now(UTC) - timedelta(minutes=120)
         assert job.is_due is True
@@ -575,7 +575,7 @@ class TestScheduledJob:
         job = ScheduledJob(
             name="new",
             handler=AsyncMock(),
-            interval_minutes=30,
+            interval_seconds=30,
         )
         # Should be approximately now
         assert job.next_run is not None
@@ -585,11 +585,11 @@ class TestScheduledJob:
         job = ScheduledJob(
             name="executed",
             handler=AsyncMock(),
-            interval_minutes=30,
+            interval_seconds=30,
         )
         run_time = datetime.now(UTC) - timedelta(minutes=10)
         job.last_run = run_time
-        expected = run_time + timedelta(minutes=30)
+        expected = run_time + timedelta(seconds=30)
         assert job.next_run == expected
 
 
@@ -619,13 +619,13 @@ class TestMaintenanceScheduler:
         from app.core.config import settings
 
         assert (
-            job_map["consolidate_duplicates"].interval_minutes
+            job_map["consolidate_duplicates"].interval_seconds
             == settings.scheduler_consolidation_interval
         )
-        assert job_map["archive_stale"].interval_minutes == settings.scheduler_archive_interval
-        assert job_map["recompute_recency"].interval_minutes == settings.scheduler_recency_interval
-        assert job_map["cleanup_expired"].interval_minutes == settings.scheduler_cleanup_interval
-        assert job_map["prune_access_logs"].interval_minutes == settings.scheduler_prune_interval
+        assert job_map["archive_stale"].interval_seconds == settings.scheduler_archive_interval
+        assert job_map["recompute_recency"].interval_seconds == settings.scheduler_recency_interval
+        assert job_map["cleanup_expired"].interval_seconds == settings.scheduler_cleanup_interval
+        assert job_map["prune_access_logs"].interval_seconds == settings.scheduler_prune_interval
 
     def test_jobs_use_settings_enabled(self):
         scheduler = MaintenanceScheduler()
@@ -649,7 +649,7 @@ class TestMaintenanceScheduler:
         for job_status in status["jobs"]:
             assert "name" in job_status
             assert "enabled" in job_status
-            assert "interval_minutes" in job_status
+            assert "interval_seconds" in job_status
             assert "run_count" in job_status
 
     @pytest.mark.asyncio
@@ -666,7 +666,7 @@ class TestMaintenanceScheduler:
         test_job = ScheduledJob(
             name="mock_job",
             handler=mock_handler,
-            interval_minutes=60,
+            interval_seconds=60,
         )
         result = await scheduler._execute_job(test_job)
 
@@ -686,7 +686,7 @@ class TestMaintenanceScheduler:
         test_job = ScheduledJob(
             name="failing_job",
             handler=failing_handler,
-            interval_minutes=60,
+            interval_seconds=60,
         )
         result = await scheduler._execute_job(test_job)
 

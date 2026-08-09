@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import secrets
+import uuid
 from datetime import UTC, datetime
 
 from fastapi import Depends, HTTPException, Security, status
@@ -75,6 +76,29 @@ async def get_current_api_key(
     db_key.last_used_at = datetime.now(UTC)
 
     return db_key
+
+
+def enforce_tenant(api_key: APIKey | None, user_id: uuid.UUID | None) -> None:
+    """Ensure an authenticated key may act on behalf of ``user_id``.
+
+    This is the tenant-isolation boundary: a key issued to user A cannot read
+    or mutate user B's memories by passing a different ``user_id`` in the
+    request. A no-op when auth is disabled (``api_key is None``) or tenant
+    isolation is turned off, so it is safe to attach to every route.
+
+    Keys with the ``*`` scope (service/admin keys) may act cross-tenant.
+    """
+    if api_key is None or not settings.enforce_tenant_isolation:
+        return
+    if api_key.scopes:
+        allowed = {s.strip() for s in api_key.scopes.split(",")}
+        if "*" in allowed:
+            return
+    if user_id is not None and api_key.user_id != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="API key is not authorized for this user_id.",
+        )
 
 
 def require_scope(scope: str):

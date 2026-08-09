@@ -19,8 +19,11 @@ Most agentic frameworks treat memory as an afterthought — a JSON blob, a vecto
 | Feature | AgentMemoryDB | Typical alternatives |
 |---------|---------------|----------------------|
 | **Storage** | PostgreSQL — one DB you already know | Redis, Pinecone, custom |
-| **Audit trail** | Every mutation is versioned; every retrieval is logged | Fire-and-forget |
-| **Search** | Hybrid vector + recency + importance + authority + confidence + full-text | Vector-only |
+| **Memory pyramid** | First-class `raw`→`atom`→`scenario`→`persona` layers in SQL | Flat records or files on disk |
+| **Audit trail** | Every mutation is versioned (lossless snapshots); every retrieval is logged | Fire-and-forget |
+| **Search** | Hybrid **RRF fusion** of dense vector + sparse full-text (BM25), re-ranked by recency + importance + authority + confidence | Vector-only |
+| **Context assembly** | Budget-capped, layer-ordered, injection-safe prompt block via `/memories/assemble-context` | Raw dump into prompt |
+| **Tenant isolation** | API keys bound to their owner — a key for user A can't touch user B | Client-asserted / none |
 | **State machine** | First-class tasks with validated transitions | Ad-hoc status fields |
 | **Event sourcing** | Event → Observation → Memory pipeline | Direct writes |
 | **Auth** | API-key with scopes, per-key expiry | None / external |
@@ -35,6 +38,11 @@ Most agentic frameworks treat memory as an afterthought — a JSON blob, a vecto
 | **Scheduled jobs** | Auto-consolidation, archiving, recency refresh | Manual |
 | **TypeScript SDK** | Typed JS/TS client for Node.js & browser | Python only |
 | **Self-hosted** | `docker compose up`, Apache-2.0 | SaaS lock-in |
+
+> **Design note:** the memory-pyramid, RRF hybrid retrieval, and context-assembly
+> features were informed by a detailed teardown of TencentDB Agent Memory — we
+> adopted its best ideas while avoiding its security and correctness flaws. See
+> [`docs/tencent-agent-memory-analysis.md`](docs/tencent-agent-memory-analysis.md).
 
 ---
 

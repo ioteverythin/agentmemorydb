@@ -96,23 +96,21 @@ class MemoryService:
                 record_upsert("skip_identical")
                 return existing, False
 
-            # Snapshot previous version
-            await self._repo.snapshot_version(existing)
-
-            # Handle contradiction links
+            # Snapshot previous version. In-place versioning means the prior
+            # content is preserved as a MemoryVersion row (with its full
+            # governance envelope), which is the authoritative record of a
+            # contradiction/supersession — no self-referential link needed.
+            snapshot = await self._repo.snapshot_version(existing)
             if data.is_contradiction:
-                await self._repo.create_link(
-                    source_id=existing.id,
-                    target_id=existing.id,  # self-ref; target updated below
-                    link_type="supersedes",
-                    description="Updated via upsert with contradiction flag",
-                )
+                snapshot.status = "superseded"
 
             # Update canonical row
             existing.content = data.content
             existing.content_hash = content_hash
             existing.embedding = data.embedding
             existing.payload = data.payload
+            existing.memory_type = data.memory_type
+            existing.layer = data.layer
             existing.source_type = data.source_type
             existing.source_event_id = data.source_event_id
             existing.source_observation_id = data.source_observation_id
@@ -121,7 +119,7 @@ class MemoryService:
             existing.confidence = data.confidence
             existing.importance_score = data.importance_score
             existing.recency_score = 1.0
-            existing.valid_from = data.valid_from
+            existing.valid_from = data.valid_from or existing.valid_from
             existing.valid_to = data.valid_to
             existing.expires_at = data.expires_at
             existing.version += 1
@@ -136,6 +134,7 @@ class MemoryService:
                 project_id=data.project_id,
                 memory_key=data.memory_key,
                 memory_type=data.memory_type,
+                layer=data.layer,
                 scope=data.scope,
                 content=data.content,
                 content_hash=content_hash,
