@@ -16,11 +16,19 @@ from app.models.memory_link import MemoryLink
 from app.models.memory_version import MemoryVersion
 from app.repositories.memory_repository import MemoryRepository
 from app.schemas.memory import MemoryStatusUpdate, MemoryUpsert
+from app.services.lifecycle import emit_lifecycle_event, memory_event_payload
 from app.utils.embedding_provider import get_embedding_provider
 from app.utils.hashing import compute_content_hash
 from app.utils.masking import get_default_engine
+from app.ws import MemoryEventTypes
 
 logger = logging.getLogger(__name__)
+
+# Map a target status to the most specific lifecycle event.
+_STATUS_EVENT_MAP = {
+    "archived": MemoryEventTypes.MEMORY_ARCHIVED,
+    "retracted": MemoryEventTypes.MEMORY_RETRACTED,
+}
 
 
 def _mask_if_enabled(text: str | None) -> str | None:
@@ -45,13 +53,17 @@ class MemoryService:
     """
 
     def __init__(self, session: AsyncSession) -> None:
+        self._session = session
         self._repo = MemoryRepository(session)
 
     # ── Upsert (core feature) ───────────────────────────────────
-    async def upsert(self, data: MemoryUpsert) -> tuple[Memory, bool]:
+    async def upsert(self, data: MemoryUpsert, *, emit: bool = True) -> tuple[Memory, bool]:
         """Create or update a canonical memory.
 
-        Returns (memory, is_new) tuple.
+        Returns (memory, is_new) tuple. When ``emit`` is True (default), a
+        ``memory.created`` / ``memory.updated`` lifecycle event is fired to
+        webhooks and WebSocket subscribers. Batch callers pass ``emit=False``
+        to avoid a per-item webhook fan-out.
 
         Behaviour:
         - Finds active memory with same memory_key + user_id + scope (+ project_id).
@@ -126,6 +138,15 @@ class MemoryService:
             existing.updated_at = datetime.now(UTC)
 
             record_upsert("update")
+            if emit:
+                await emit_lifecycle_event(
+                    self._session,
+                    event_type=MemoryEventTypes.MEMORY_UPDATED,
+                    user_id=existing.user_id,
+                    data=memory_event_payload(existing),
+                    project_id=existing.project_id,
+                    memory_id=existing.id,
+                )
             return existing, False
         else:
             # Create new memory
@@ -156,6 +177,15 @@ class MemoryService:
             )
             memory = await self._repo.create(memory)
             record_upsert("create")
+            if emit:
+                await emit_lifecycle_event(
+                    self._session,
+                    event_type=MemoryEventTypes.MEMORY_CREATED,
+                    user_id=memory.user_id,
+                    data=memory_event_payload(memory),
+                    project_id=memory.project_id,
+                    memory_id=memory.id,
+                )
             return memory, True
 
     # ── Read operations ─────────────────────────────────────────
@@ -188,11 +218,23 @@ class MemoryService:
         )
 
     # ── Status management ───────────────────────────────────────
-    async def update_status(self, memory_id: uuid.UUID, data: MemoryStatusUpdate) -> Memory:
-        """Change the lifecycle status of a memory."""
+    async def update_status(
+        self, memory_id: uuid.UUID, data: MemoryStatusUpdate, *, emit: bool = True
+    ) -> Memory:
+        """Change the lifecycle status of a memory, emitting a lifecycle event."""
         memory = await self.get_memory(memory_id)
         memory.status = data.status
         memory.updated_at = datetime.now(UTC)
+        if emit:
+            event_type = _STATUS_EVENT_MAP.get(data.status, MemoryEventTypes.MEMORY_UPDATED)
+            await emit_lifecycle_event(
+                self._session,
+                event_type=event_type,
+                user_id=memory.user_id,
+                data=memory_event_payload(memory),
+                project_id=memory.project_id,
+                memory_id=memory.id,
+            )
         return memory
 
     # ── Versions & links ────────────────────────────────────────

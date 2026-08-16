@@ -85,6 +85,11 @@ class Settings(BaseSettings):
     # ── Webhooks ─────────────────────────────────────────────
     enable_webhooks: bool = True
 
+    # ── Lifecycle events (webhooks + WebSocket on memory changes) ─
+    # Master switch for firing memory.created/updated/archived/etc. events.
+    # When off, no webhooks or WebSocket broadcasts are emitted on writes.
+    emit_lifecycle_events: bool = True
+
     # ── Metrics ──────────────────────────────────────────────
     enable_metrics: bool = True
 
