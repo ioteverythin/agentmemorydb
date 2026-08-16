@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build and optionally publish the agentmemodb pip package.
+"""Build and optionally publish the engramdb pip package.
 
 Usage:
     python pkg/publish.py                    # Build only (sdist + wheel)
@@ -13,13 +13,13 @@ Prerequisites:
 
 What this does:
     1. Creates a temporary _build/ directory
-    2. Copies agentmemodb/ source, LICENSE, and pkg/ config into it
+    2. Copies engramdb/ source, LICENSE, and pkg/ config into it
     3. Runs `python -m build` from _build/
     4. Copies the resulting dist/ back to pkg/dist/
     5. Optionally runs twine check / upload
 
-The resulting package on PyPI will be named `agentmemodb` and can be
-installed with `pip install agentmemodb`.
+The resulting package on PyPI will be named `engramdb` and can be
+installed with `pip install engramdb`.
 """
 
 from __future__ import annotations
@@ -33,8 +33,8 @@ from pathlib import Path
 
 # Paths
 SCRIPT_DIR = Path(__file__).resolve().parent          # pkg/
-PROJECT_ROOT = SCRIPT_DIR.parent                       # agentmemodb project root
-SOURCE_PKG = PROJECT_ROOT / "agentmemodb"              # package source
+PROJECT_ROOT = SCRIPT_DIR.parent                       # engramdb project root
+SOURCE_PKG = PROJECT_ROOT / "engramdb"              # package source
 BUILD_DIR = SCRIPT_DIR / "_build"                      # temporary build directory
 DIST_DIR = SCRIPT_DIR / "dist"                         # final dist output
 
@@ -62,13 +62,13 @@ def build():
     BUILD_DIR.mkdir(parents=True)
 
     # Copy package source
-    dest_pkg = BUILD_DIR / "agentmemodb"
+    dest_pkg = BUILD_DIR / "engramdb"
     shutil.copytree(
         SOURCE_PKG,
         dest_pkg,
         ignore=shutil.ignore_patterns("__pycache__", "*.pyc", ".mypy_cache"),
     )
-    print(f"  Copied agentmemodb/ → _build/agentmemodb/")
+    print(f"  Copied engramdb/ → _build/engramdb/")
 
     # Copy pyproject.toml
     shutil.copy2(SCRIPT_DIR / "pyproject.toml", BUILD_DIR / "pyproject.toml")
@@ -173,10 +173,10 @@ def upload(repository: str):
 
     if repository == "testpypi":
         cmd += ["--repository", "testpypi"]
-        print("  Target: https://test.pypi.org/project/agentmemodb/")
+        print("  Target: https://test.pypi.org/project/engramdb/")
         print("  (Set TWINE_USERNAME and TWINE_PASSWORD, or use --username/__token__)\n")
     else:
-        print("  Target: https://pypi.org/project/agentmemodb/")
+        print("  Target: https://pypi.org/project/engramdb/")
         print("  (Set TWINE_USERNAME and TWINE_PASSWORD, or use --username/__token__)\n")
 
     cmd += [str(f) for f in files]
@@ -189,17 +189,17 @@ def upload(repository: str):
 
     if repository == "testpypi":
         print(f"\n  ✅ Uploaded to TestPyPI!")
-        print(f"  Install with: pip install -i https://test.pypi.org/simple/ agentmemodb")
+        print(f"  Install with: pip install -i https://test.pypi.org/simple/ engramdb")
     else:
         print(f"\n  ✅ Uploaded to PyPI!")
-        print(f"  Install with: pip install agentmemodb")
+        print(f"  Install with: pip install engramdb")
 
     return True
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Build and publish agentmemodb to PyPI",
+        description="Build and publish engramdb to PyPI",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -217,7 +217,7 @@ Examples:
     args = parser.parse_args()
 
     print("=" * 60)
-    print("  agentmemodb — PyPI Package Builder")
+    print("  engramdb — PyPI Package Builder")
     print("=" * 60)
 
     if args.clean:

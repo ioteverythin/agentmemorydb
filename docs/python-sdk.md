@@ -1,13 +1,13 @@
 # Python SDK Guide
 
-AgentMemoryDB ships with three Python clients:
+EngramDB ships with three Python clients:
 
 | Client | When to use |
 |---|---|
-| `agentmemodb.Client` | Local / embedded use. SQLite, no server, no Docker. |
-| `agentmemodb.HttpClient` | Synchronous HTTP client talking to the Docker server. |
-| `app.sdk.client.AgentMemoryDBClient` | Async HTTP client for high-performance, async applications. |
-| `agentmemodb.MemoryManager` | High-level abstraction combining short-term and long-term memory. |
+| `engramdb.Client` | Local / embedded use. SQLite, no server, no Docker. |
+| `engramdb.HttpClient` | Synchronous HTTP client talking to the Docker server. |
+| `app.sdk.client.EngramDBClient` | Async HTTP client for high-performance, async applications. |
+| `engramdb.MemoryManager` | High-level abstraction combining short-term and long-term memory. |
 
 ---
 
@@ -15,7 +15,7 @@ AgentMemoryDB ships with three Python clients:
 
 ```bash
 # For the embedded client (no server needed)
-pip install agentmemodb
+pip install engramdb
 
 # For sentence-transformer embeddings (recommended)
 pip install sentence-transformers
@@ -26,23 +26,23 @@ pip install httpx
 
 ---
 
-## 1. Embedded Client (`agentmemodb.Client`)
+## 1. Embedded Client (`engramdb.Client`)
 
 Zero-configuration, in-process memory backed by SQLite. No Docker, no PostgreSQL.
 
 ### Initializing
 
 ```python
-import agentmemodb
+import engramdb
 
-# Default: stores to ./agentmemodb_data/agentmemodb.sqlite3
-db = agentmemodb.Client()
+# Default: stores to ./engramdb_data/engramdb.sqlite3
+db = engramdb.Client()
 
 # Custom path
-db = agentmemodb.Client(path="./my_app/memories")
+db = engramdb.Client(path="./my_app/memories")
 
 # In-memory (for tests)
-db = agentmemodb.Client(path=":memory:")
+db = engramdb.Client(path=":memory:")
 
 # With sentence-transformer embeddings
 from sentence_transformers import SentenceTransformer
@@ -54,10 +54,10 @@ class STEmbedding:
     def __call__(self, texts: list[str]) -> list[list[float]]:
         return self.model.encode(texts).tolist()
 
-db = agentmemodb.Client(embedding_fn=STEmbedding())
+db = engramdb.Client(embedding_fn=STEmbedding())
 
 # With automatic PII masking
-db = agentmemodb.Client(mask_pii=True)
+db = engramdb.Client(mask_pii=True)
 ```
 
 ### Storing Memories
@@ -167,19 +167,19 @@ for v in versions:
 db.close()
 
 # Or use as a context manager
-with agentmemodb.Client() as db:
+with engramdb.Client() as db:
     db.upsert("user-1", "key", "content")
     # auto-closes
 ```
 
 ---
 
-## 2. HTTP Client (`agentmemodb.HttpClient`)
+## 2. HTTP Client (`engramdb.HttpClient`)
 
 Synchronous client that talks to the running Docker server. Ideal for scripts, notebooks, and synchronous frameworks (Flask, Django).
 
 ```python
-from agentmemodb import HttpClient
+from engramdb import HttpClient
 
 client = HttpClient(
     base_url="http://localhost:8100",
@@ -229,16 +229,16 @@ client.close()
 
 ---
 
-## 3. Async HTTP Client (`AgentMemoryDBClient`)
+## 3. Async HTTP Client (`EngramDBClient`)
 
 High-performance async client using `httpx`. Best for FastAPI, async frameworks, and high-throughput pipelines.
 
 ```python
 import asyncio
-from app.sdk.client import AgentMemoryDBClient
+from app.sdk.client import EngramDBClient
 
 async def main():
-    async with AgentMemoryDBClient(
+    async with EngramDBClient(
         base_url="http://localhost:8100",
         api_key="amdb_your_key_here",   # optional
         timeout=30.0,
@@ -412,11 +412,11 @@ asyncio.run(main())
 `MemoryManager` is a high-level abstraction that combines short-term conversation memory and long-term persistent memory into a single easy-to-use interface.
 
 ```python
-from agentmemodb import MemoryManager
+from engramdb import MemoryManager
 
 mgr = MemoryManager(
     user_id="user-1",
-    db_path=None,           # auto-creates ./agentmemodb_data/
+    db_path=None,           # auto-creates ./engramdb_data/
     thread_id="session-1",  # conversation thread
     max_short_term=50,      # max messages in short-term buffer
 )
@@ -520,7 +520,7 @@ mgr.promote(
 ### Full Workflow Example
 
 ```python
-from agentmemodb import MemoryManager
+from engramdb import MemoryManager
 import openai
 
 def build_prompt(mgr: MemoryManager, user_query: str) -> str:
@@ -610,11 +610,11 @@ chat("user-1")
 
 ```python
 """
-A complete agent that uses AgentMemoryDB for persistent memory
+A complete agent that uses EngramDB for persistent memory
 across conversation sessions.
 """
-import agentmemodb
-from agentmemodb import MemoryManager
+import engramdb
+from engramdb import MemoryManager
 from sentence_transformers import SentenceTransformer
 
 
@@ -632,7 +632,7 @@ class STEmbedding:
 def create_agent(user_id: str):
     """Create a memory-enabled agent for a user."""
     embedding_fn = STEmbedding()
-    db = agentmemodb.Client(
+    db = engramdb.Client(
         path="./agent_memories",
         embedding_fn=embedding_fn,
         mask_pii=True,          # auto-mask PII before storage

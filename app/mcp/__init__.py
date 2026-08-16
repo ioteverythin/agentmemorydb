@@ -1,4 +1,4 @@
-"""MCP (Model Context Protocol) server for AgentMemoryDB.
+"""MCP (Model Context Protocol) server for EngramDB.
 
 Exposes memory operations as MCP tools so AI agents can
 directly store, recall, and manage memories through the protocol.

@@ -1,4 +1,4 @@
-# QuickStart — AgentMemoryDB
+# QuickStart — EngramDB
 
 Get from zero to a working memory-enabled agent in under 5 minutes.
 
@@ -19,8 +19,8 @@ Get from zero to a working memory-enabled agent in under 5 minutes.
 
 ```bash
 # Clone and enter the project
-git clone https://github.com/ioteverythin/agentmemorydb.git
-cd agentmemorydb
+git clone https://github.com/ioteverythin/engramdb.git
+cd engramdb
 
 # Start PostgreSQL + API server (pulls pre-built image or builds locally)
 docker compose up -d
@@ -32,8 +32,8 @@ docker compose ps
 Expected output:
 ```
 NAME                     STATUS
-agentmemodb-postgres-1   Up (healthy)
-agentmemodb-app-1        Up (healthy)
+engramdb-postgres-1   Up (healthy)
+engramdb-app-1        Up (healthy)
 ```
 
 The API is now live at **http://localhost:8100**.
@@ -163,7 +163,7 @@ The `explain: true` flag returns a full **score breakdown** showing exactly how 
 The included demo script seeds 9 memories with real semantic embeddings and creates a knowledge graph with 7 typed links:
 
 ```bash
-docker exec agentmemodb-app-1 python examples/scripts/agent_demo.py --auto
+docker exec engramdb-app-1 python examples/scripts/agent_demo.py --auto
 ```
 
 ---
@@ -187,9 +187,9 @@ Install the SDK (or use the one included in the repo):
 
 ```python
 # Option A: Embedded client (SQLite, zero dependencies, no server needed)
-import agentmemodb
+import engramdb
 
-db = agentmemodb.Client()                  # creates ./agentmemodb_data/
+db = engramdb.Client()                  # creates ./engramdb_data/
 db.upsert("user-1", "pref:lang", "User prefers Python")
 results = db.search("user-1", "What language?")
 for r in results:
@@ -200,10 +200,10 @@ db.close()
 ```python
 # Option B: Async HTTP client (connects to Docker server)
 import asyncio
-from app.sdk.client import AgentMemoryDBClient
+from app.sdk.client import EngramDBClient
 
 async def main():
-    async with AgentMemoryDBClient("http://localhost:8100") as client:
+    async with EngramDBClient("http://localhost:8100") as client:
         user = await client.create_user("Alice")
         user_id = user["id"]
 

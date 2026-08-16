@@ -1,5 +1,5 @@
-"""AgentMemoryDB Python SDK."""
+"""EngramDB Python SDK."""
 
-from app.sdk.client import AgentMemoryDBClient, AgentMemoryDBError
+from app.sdk.client import EngramDBClient, EngramDBError
 
-__all__ = ["AgentMemoryDBClient", "AgentMemoryDBError"]
+__all__ = ["EngramDBClient", "EngramDBError"]

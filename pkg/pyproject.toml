@@ -3,14 +3,14 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "agentmemodb"
+name = "engramdb"
 version = "0.1.0"
 description = "Lightweight, embeddable memory backend for AI agents — short-term conversation, long-term knowledge, semantic search, PII masking."
 readme = "README.md"
 license = { text = "Apache-2.0" }
 requires-python = ">=3.11"
 authors = [
-    { name = "AgentMemoryDB Contributors" },
+    { name = "EngramDB Contributors" },
 ]
 keywords = [
     "ai",
@@ -89,18 +89,18 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/agentmemorydb/agentmemorydb"
-Documentation = "https://github.com/agentmemorydb/agentmemorydb/tree/main/docs"
-Repository = "https://github.com/agentmemorydb/agentmemorydb"
-Issues = "https://github.com/agentmemorydb/agentmemorydb/issues"
-Changelog = "https://github.com/agentmemorydb/agentmemorydb/releases"
+Homepage = "https://github.com/engramdb/engramdb"
+Documentation = "https://github.com/engramdb/engramdb/tree/main/docs"
+Repository = "https://github.com/engramdb/engramdb"
+Issues = "https://github.com/engramdb/engramdb/issues"
+Changelog = "https://github.com/engramdb/engramdb/releases"
 
 [tool.hatch.build.targets.sdist]
 include = [
-    "agentmemodb/",
+    "engramdb/",
     "LICENSE",
     "README.md",
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["agentmemodb"]
+packages = ["engramdb"]

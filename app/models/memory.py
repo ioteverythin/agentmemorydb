@@ -29,6 +29,8 @@ class Memory(Base):
 
     # ── Content ─────────────────────────────────────────────────
     memory_type: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    # Distillation layer in the memory pyramid (raw/atom/scenario/persona).
+    layer: Mapped[str] = mapped_column(String(16), nullable=False, default="atom", index=True)
     content: Mapped[str] = mapped_column(Text, nullable=False)
     content_hash: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     embedding = mapped_column(Vector(settings.embedding_dimension), nullable=True)

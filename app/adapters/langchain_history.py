@@ -1,13 +1,13 @@
-"""LangChain ChatMessageHistory adapter backed by AgentMemoryDB.
+"""LangChain ChatMessageHistory adapter backed by EngramDB.
 
 Gives LangChain / LCEL users a drop-in history store backed by
-AgentMemoryDB's auditable, searchable episodic memory.
+EngramDB's auditable, searchable episodic memory.
 
 Usage::
 
-    from app.adapters.langchain_history import AgentMemoryDBChatMessageHistory
+    from app.adapters.langchain_history import EngramDBChatMessageHistory
 
-    history = AgentMemoryDBChatMessageHistory(
+    history = EngramDBChatMessageHistory(
         base_url="http://localhost:8100",
         user_id="alice-uuid",
         session_id="session-001",
@@ -54,8 +54,8 @@ _ROLE_MAP: dict[str, type[BaseMessage]] = {
 }
 
 
-class AgentMemoryDBChatMessageHistory(BaseChatMessageHistory):
-    """LangChain ``BaseChatMessageHistory`` backed by AgentMemoryDB.
+class EngramDBChatMessageHistory(BaseChatMessageHistory):
+    """LangChain ``BaseChatMessageHistory`` backed by EngramDB.
 
     Each message is stored as an ``episodic`` memory with
     ``memory_key = {session_id}:{sequence_number}``.
@@ -86,9 +86,7 @@ class AgentMemoryDBChatMessageHistory(BaseChatMessageHistory):
     @property
     def messages(self) -> list[BaseMessage]:
         """Synchronous access — not supported by the async adapter."""
-        raise NotImplementedError(
-            "AgentMemoryDBChatMessageHistory is async-only. Use aget_messages()."
-        )
+        raise NotImplementedError("EngramDBChatMessageHistory is async-only. Use aget_messages().")
 
     async def aget_messages(self) -> list[BaseMessage]:
         """Retrieve all messages for this session, ordered chronologically."""
@@ -150,9 +148,7 @@ class AgentMemoryDBChatMessageHistory(BaseChatMessageHistory):
 
     def add_message(self, message: BaseMessage) -> None:
         """Synchronous fallback — not supported."""
-        raise NotImplementedError(
-            "AgentMemoryDBChatMessageHistory is async-only. Use aadd_messages()."
-        )
+        raise NotImplementedError("EngramDBChatMessageHistory is async-only. Use aadd_messages().")
 
     # ── Clear ───────────────────────────────────────────────────
 
@@ -184,7 +180,7 @@ class AgentMemoryDBChatMessageHistory(BaseChatMessageHistory):
 
     def clear(self) -> None:
         """Synchronous fallback — not supported."""
-        raise NotImplementedError("AgentMemoryDBChatMessageHistory is async-only. Use aclear().")
+        raise NotImplementedError("EngramDBChatMessageHistory is async-only. Use aclear().")
 
     # ── Lifecycle ───────────────────────────────────────────────
 

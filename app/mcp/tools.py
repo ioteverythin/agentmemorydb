@@ -1,4 +1,4 @@
-"""MCP tool definitions for AgentMemoryDB.
+"""MCP tool definitions for EngramDB.
 
 Each tool is exposed to AI agents via the Model Context Protocol.
 Tools are designed to be *intent-based* — agents express what they
@@ -40,10 +40,11 @@ async def handle_store_memory(arguments: dict[str, Any]) -> dict[str, Any]:
             user_id=uuid.UUID(arguments["user_id"]),
             memory_key=arguments["memory_key"],
             memory_type=arguments.get("memory_type", "semantic"),
+            layer=arguments.get("layer", "atom"),
             scope=arguments.get("scope", "user"),
             content=arguments["content"],
             payload=arguments.get("payload"),
-            source_type=arguments.get("source_type", "agent_inference"),
+            source_type=arguments.get("source_type", "system_inference"),
             confidence=arguments.get("confidence", 0.7),
             importance_score=arguments.get("importance_score", 0.5),
             project_id=uuid.UUID(arguments["project_id"]) if arguments.get("project_id") else None,
@@ -167,12 +168,12 @@ async def handle_record_event(arguments: dict[str, Any]) -> dict[str, Any]:
 
         data = EventCreate(
             user_id=uuid.UUID(arguments["user_id"]),
-            run_id=uuid.UUID(arguments["run_id"]) if arguments.get("run_id") else None,
-            event_type=arguments.get("event_type", "agent_message"),
+            run_id=uuid.UUID(arguments["run_id"]),
+            event_type=arguments.get("event_type", "model_output"),
             content=arguments["content"],
-            metadata=arguments.get("metadata"),
+            payload=arguments.get("payload"),
         )
-        event = await svc.create(data)
+        event = await svc.create_event(data)
         await session.commit()
 
         return {
@@ -215,19 +216,40 @@ async def handle_explore_graph(arguments: dict[str, Any]) -> dict[str, Any]:
 
 
 async def handle_consolidate_memories(arguments: dict[str, Any]) -> dict[str, Any]:
-    """Find and merge duplicate/near-duplicate memories."""
+    """Find and (unless dry_run) merge duplicate/near-duplicate memories."""
     from app.services.consolidation_service import ConsolidationService
+
+    user_id = uuid.UUID(arguments["user_id"])
+    dry_run = arguments.get("dry_run", True)
 
     async with async_session_factory() as session:
         svc = ConsolidationService(session)
-        report = await svc.auto_consolidate(
-            user_id=uuid.UUID(arguments["user_id"]),
-        )
-        await session.commit()
 
+        if dry_run:
+            # Preview only: report duplicate groups without any mutation.
+            groups = await svc.find_exact_duplicates(user_id)
+            details = [
+                {
+                    "content_hash": group[0].content_hash,
+                    "count": len(group),
+                    "memory_ids": [str(m.id) for m in group],
+                }
+                for group in groups
+            ]
+            # No commit — a preview must not persist anything.
+            return {
+                "user_id": arguments["user_id"],
+                "dry_run": True,
+                "duplicates_found": len(groups),
+                "merged": 0,
+                "details": details,
+            }
+
+        report = await svc.auto_consolidate(user_id=user_id)
+        await session.commit()
         return {
             "user_id": arguments["user_id"],
-            "dry_run": arguments.get("dry_run", True),
+            "dry_run": False,
             "duplicates_found": report.get("duplicate_groups_found", 0),
             "merged": report.get("memories_merged", 0),
             "details": [],
@@ -287,14 +309,20 @@ TOOL_REGISTRY: dict[str, ToolDefinition] = {
                 "source_type": {
                     "type": "string",
                     "enum": [
-                        "human_input",
-                        "agent_inference",
+                        "user_input",
+                        "tool_output",
                         "system_inference",
-                        "external_api",
-                        "reflection",
-                        "consolidated",
+                        "human_verified",
+                        "imported",
                     ],
-                    "default": "agent_inference",
+                    "default": "system_inference",
+                    "description": "Provenance (matches the server SourceType vocabulary).",
+                },
+                "layer": {
+                    "type": "string",
+                    "enum": ["raw", "atom", "scenario", "persona"],
+                    "default": "atom",
+                    "description": "Memory-pyramid layer.",
                 },
                 "project_id": {
                     "type": "string",
@@ -434,24 +462,25 @@ TOOL_REGISTRY: dict[str, ToolDefinition] = {
                 "event_type": {
                     "type": "string",
                     "enum": [
-                        "user_message",
-                        "agent_message",
+                        "user_input",
                         "tool_call",
                         "tool_result",
-                        "system_event",
-                        "observation",
-                        "reflection",
+                        "planner_step",
+                        "action_taken",
+                        "model_output",
+                        "system_note",
                     ],
-                    "default": "agent_message",
+                    "default": "model_output",
+                    "description": "Event category (matches the server EventType vocabulary).",
                 },
                 "run_id": {
                     "type": "string",
                     "format": "uuid",
-                    "description": "Optional agent run ID.",
+                    "description": "The agent run this event belongs to (required — events are run-scoped).",
                 },
-                "metadata": {"type": "object", "description": "Optional structured metadata."},
+                "payload": {"type": "object", "description": "Optional structured metadata."},
             },
-            "required": ["user_id", "content"],
+            "required": ["user_id", "content", "run_id"],
         },
         handler=handle_record_event,
     ),

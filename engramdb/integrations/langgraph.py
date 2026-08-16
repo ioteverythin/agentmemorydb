@@ -1,32 +1,32 @@
-"""LangGraph integration for AgentMemoryDB.
+"""LangGraph integration for EngramDB.
 
 Provides two core components for LangGraph workflows:
 
-- **AgentMemoryDBStore** — A memory store that LangGraph nodes can read/write
+- **EngramDBStore** — A memory store that LangGraph nodes can read/write
   to during graph execution.  Memories persist across graph runs.
 
-- **AgentMemoryDBSaver** — A checkpoint saver that persists full graph state
-  snapshots to AgentMemoryDB, enabling pause/resume and time-travel.
+- **EngramDBSaver** — A checkpoint saver that persists full graph state
+  snapshots to EngramDB, enabling pause/resume and time-travel.
 
 Both work with the embedded ``Client`` (SQLite) or remote ``HttpClient``.
 
 Quick start::
 
-    import agentmemodb
-    from agentmemodb.integrations.langgraph import (
-        AgentMemoryDBStore,
-        AgentMemoryDBSaver,
+    import engramdb
+    from engramdb.integrations.langgraph import (
+        EngramDBStore,
+        EngramDBSaver,
     )
 
-    db = agentmemodb.Client()
+    db = engramdb.Client()
 
     # Store — semantic long-term memory for agent nodes
-    store = AgentMemoryDBStore(client=db, user_id="user-1")
+    store = EngramDBStore(client=db, user_id="user-1")
     store.put("pref:language", "User prefers Python")
     docs = store.search("What language does the user prefer?")
 
     # Saver — graph state checkpoints
-    saver = AgentMemoryDBSaver(client=db)
+    saver = EngramDBSaver(client=db)
     # Pass to StateGraph: graph = StateGraph(..., checkpointer=saver)
 """
 
@@ -37,15 +37,15 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, Optional
 
-from agentmemodb.types import Memory, SearchResult
+from engramdb.types import Memory, SearchResult
 
 
 # ═══════════════════════════════════════════════════════════════════
-# 1. AgentMemoryDBStore — Long-term memory for LangGraph nodes
+# 1. EngramDBStore — Long-term memory for LangGraph nodes
 # ═══════════════════════════════════════════════════════════════════
 
 
-class AgentMemoryDBStore:
+class EngramDBStore:
     """Semantic memory store for LangGraph agent nodes.
 
     Use this inside LangGraph nodes to give your agents persistent,
@@ -67,7 +67,7 @@ class AgentMemoryDBStore:
     Parameters
     ----------
     client
-        An ``agentmemodb.Client`` or ``agentmemodb.HttpClient``.
+        An ``engramdb.Client`` or ``engramdb.HttpClient``.
     user_id
         Default user context for memory operations.
     namespace
@@ -246,12 +246,12 @@ class AgentMemoryDBStore:
 
 
 # ═══════════════════════════════════════════════════════════════════
-# 2. AgentMemoryDBSaver — Graph state checkpoint persistence
+# 2. EngramDBSaver — Graph state checkpoint persistence
 # ═══════════════════════════════════════════════════════════════════
 
 
-class AgentMemoryDBSaver:
-    """Checkpoint saver that persists LangGraph state to AgentMemoryDB.
+class EngramDBSaver:
+    """Checkpoint saver that persists LangGraph state to EngramDB.
 
     Stores graph state snapshots as ``procedural`` memories, enabling:
     - **Pause/Resume**: Stop and restart graph execution
@@ -262,9 +262,9 @@ class AgentMemoryDBSaver:
     Usage::
 
         from langgraph.graph import StateGraph
-        from agentmemodb.integrations.langgraph import AgentMemoryDBSaver
+        from engramdb.integrations.langgraph import EngramDBSaver
 
-        saver = AgentMemoryDBSaver(client=db)
+        saver = EngramDBSaver(client=db)
 
         graph = StateGraph(MyState)
         graph.add_node("agent", agent_node)
@@ -278,7 +278,7 @@ class AgentMemoryDBSaver:
     Parameters
     ----------
     client
-        An ``agentmemodb.Client`` or ``agentmemodb.HttpClient``.
+        An ``engramdb.Client`` or ``engramdb.HttpClient``.
     user_id
         User context for storing checkpoints.
     """
@@ -489,7 +489,7 @@ class AgentMemoryDBSaver:
 
 
 def create_memory_node(
-    store: AgentMemoryDBStore,
+    store: EngramDBStore,
     input_key: str = "input",
     context_key: str = "memory_context",
     save_key: str | None = "output",
@@ -500,11 +500,11 @@ def create_memory_node(
     This returns a function you can add directly to a ``StateGraph``::
 
         from langgraph.graph import StateGraph
-        from agentmemodb.integrations.langgraph import (
-            AgentMemoryDBStore, create_memory_node,
+        from engramdb.integrations.langgraph import (
+            EngramDBStore, create_memory_node,
         )
 
-        store = AgentMemoryDBStore(client=db, user_id="user-1")
+        store = EngramDBStore(client=db, user_id="user-1")
 
         # Creates two nodes: one to recall, one to save
         recall_node = create_memory_node(store, input_key="input", context_key="context")
@@ -517,7 +517,7 @@ def create_memory_node(
     Parameters
     ----------
     store
-        An ``AgentMemoryDBStore`` instance.
+        An ``EngramDBStore`` instance.
     input_key
         State key containing the user's query.
     context_key
@@ -544,7 +544,7 @@ def create_memory_node(
 
 
 def create_save_memory_node(
-    store: AgentMemoryDBStore,
+    store: EngramDBStore,
     content_key: str = "output",
     key_prefix: str = "conversation",
 ):
@@ -576,8 +576,8 @@ def create_save_memory_node(
 
 
 __all__ = [
-    "AgentMemoryDBStore",
-    "AgentMemoryDBSaver",
+    "EngramDBStore",
+    "EngramDBSaver",
     "create_memory_node",
     "create_save_memory_node",
 ]

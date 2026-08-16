@@ -1,9 +1,9 @@
-"""AgentMemoryDB Python SDK — typed async client for all API operations.
+"""EngramDB Python SDK — typed async client for all API operations.
 
 Usage:
-    from app.sdk.client import AgentMemoryDBClient
+    from app.sdk.client import EngramDBClient
 
-    async with AgentMemoryDBClient("http://localhost:8100") as client:
+    async with EngramDBClient("http://localhost:8100") as client:
         user = await client.create_user("alice")
         memory = await client.upsert_memory(
             user_id=user["id"],
@@ -23,8 +23,8 @@ from typing import Any
 import httpx
 
 
-class AgentMemoryDBError(Exception):
-    """Raised when the AgentMemoryDB API returns an error."""
+class EngramDBError(Exception):
+    """Raised when the EngramDB API returns an error."""
 
     def __init__(self, status_code: int, detail: str) -> None:
         self.status_code = status_code
@@ -32,8 +32,8 @@ class AgentMemoryDBError(Exception):
         super().__init__(f"HTTP {status_code}: {detail}")
 
 
-class AgentMemoryDBClient:
-    """Typed async Python client for AgentMemoryDB.
+class EngramDBClient:
+    """Typed async Python client for EngramDB.
 
     Provides methods for all major API operations with proper
     error handling and type hints.
@@ -60,7 +60,7 @@ class AgentMemoryDBClient:
     async def close(self) -> None:
         await self._client.aclose()
 
-    async def __aenter__(self) -> AgentMemoryDBClient:
+    async def __aenter__(self) -> EngramDBClient:
         return self
 
     async def __aexit__(self, *args: Any) -> None:
@@ -74,7 +74,7 @@ class AgentMemoryDBClient:
                 detail = resp.json().get("detail", resp.text)
             except Exception:
                 detail = resp.text
-            raise AgentMemoryDBError(resp.status_code, str(detail))
+            raise EngramDBError(resp.status_code, str(detail))
 
     # ── Health ──────────────────────────────────────────────────
 

@@ -4,7 +4,7 @@
 
 ## Model Context Protocol (MCP) Server
 
-AgentMemoryDB exposes a [Model Context Protocol](https://modelcontextprotocol.io) server that lets any MCP-compatible AI client (Claude Desktop, Cursor, custom agents) interact with memory operations using natural language-style tool calls.
+EngramDB exposes a [Model Context Protocol](https://modelcontextprotocol.io) server that lets any MCP-compatible AI client (Claude Desktop, Cursor, custom agents) interact with memory operations using natural language-style tool calls.
 
 ### Starting the MCP Server
 
@@ -35,12 +35,12 @@ Add to your Claude Desktop `config.json`:
 ```json
 {
   "mcpServers": {
-    "agentmemorydb": {
+    "engramdb": {
       "command": "python",
       "args": ["-m", "app.mcp.server", "--transport", "stdio"],
-      "cwd": "/path/to/agentmemorydb",
+      "cwd": "/path/to/engramdb",
       "env": {
-        "DATABASE_URL": "postgresql+asyncpg://user:pass@localhost:5433/agentmemodb"
+        "DATABASE_URL": "postgresql+asyncpg://user:pass@localhost:5433/engramdb"
       }
     }
   }
@@ -324,7 +324,7 @@ const ws = new WebSocket(
 );
 
 ws.onopen = () => {
-  console.log("Connected to AgentMemoryDB event stream");
+  console.log("Connected to EngramDB event stream");
 
   // Optionally subscribe to additional channels
   ws.send(JSON.stringify({
@@ -388,7 +388,7 @@ async def listen():
     async with websockets.connect(
         f"ws://localhost:8100/ws?channels=user:{user_id}"
     ) as ws:
-        print("Connected to AgentMemoryDB event stream")
+        print("Connected to EngramDB event stream")
 
         # Ping
         await ws.send(json.dumps({"action": "ping"}))
@@ -463,7 +463,7 @@ Here's a full example building a live memory dashboard using WebSocket + vanilla
 <!DOCTYPE html>
 <html>
 <head>
-  <title>AgentMemoryDB Live Events</title>
+  <title>EngramDB Live Events</title>
   <style>
     #events { font-family: monospace; font-size: 13px; }
     .created { color: green; }

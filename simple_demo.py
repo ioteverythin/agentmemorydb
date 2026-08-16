@@ -1,14 +1,14 @@
 """
-Simplest possible AgentMemoryDB demo.
+Simplest possible EngramDB demo.
 No server, no Docker, no UUIDs — just works.
 """
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-import agentmemodb
+import engramdb
 
 # ── Zero config: in-memory SQLite, no server needed ──────────
-db = agentmemodb.Client(":memory:")
+db = engramdb.Client(":memory:")
 
 print("Storing memories...")
 db.upsert("josh", "pref:food",  "User loves sushi and Japanese food")
@@ -37,4 +37,4 @@ for q in queries:
 db.close()
 print("NOTE: scores above use DummyEmbedding (hash-based, not semantic).")
 print("For real semantic search, install: pip install sentence-transformers")
-print("Then pass: agentmemodb.Client(embedding_fn=HuggingFaceEmbedding())")
+print("Then pass: engramdb.Client(embedding_fn=HuggingFaceEmbedding())")

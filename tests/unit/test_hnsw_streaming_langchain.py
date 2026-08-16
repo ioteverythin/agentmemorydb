@@ -5,7 +5,7 @@
   TestVectorIndexConfig (5 tests)
   TestMemoryModelHNSWIndex (2 tests)
   TestStreamSearchEndpoint (3 tests)
-  TestAgentMemoryDBChatMessageHistory (11 tests)
+  TestEngramDBChatMessageHistory (11 tests)
 """
 
 from __future__ import annotations
@@ -222,7 +222,7 @@ class TestStreamSearchEndpoint:
 
 
 # =====================================================================
-# 4. TestAgentMemoryDBChatMessageHistory (11 tests)
+# 4. TestEngramDBChatMessageHistory (11 tests)
 # =====================================================================
 
 
@@ -245,7 +245,7 @@ langchain_core = pytest.importorskip("langchain_core", reason="langchain-core no
 
 
 @pytest.mark.unit
-class TestAgentMemoryDBChatMessageHistory:
+class TestEngramDBChatMessageHistory:
     """Test the LangChain ChatMessageHistory adapter."""
 
     @pytest.fixture
@@ -258,9 +258,9 @@ class TestAgentMemoryDBChatMessageHistory:
 
     @pytest.fixture
     def history(self, user_id, session_id):
-        from app.adapters.langchain_history import AgentMemoryDBChatMessageHistory
+        from app.adapters.langchain_history import EngramDBChatMessageHistory
 
-        return AgentMemoryDBChatMessageHistory(
+        return EngramDBChatMessageHistory(
             base_url="http://localhost:8100",
             user_id=user_id,
             session_id=session_id,
@@ -273,9 +273,9 @@ class TestAgentMemoryDBChatMessageHistory:
         assert history.scope == "user"
 
     def test_init_strips_trailing_slash(self):
-        from app.adapters.langchain_history import AgentMemoryDBChatMessageHistory
+        from app.adapters.langchain_history import EngramDBChatMessageHistory
 
-        h = AgentMemoryDBChatMessageHistory(
+        h = EngramDBChatMessageHistory(
             base_url="http://localhost:8100/",
             user_id="u1",
             session_id="s1",
@@ -352,9 +352,9 @@ class TestAgentMemoryDBChatMessageHistory:
 
     @pytest.mark.asyncio
     async def test_aadd_messages_with_ttl(self, user_id, session_id):
-        from app.adapters.langchain_history import AgentMemoryDBChatMessageHistory
+        from app.adapters.langchain_history import EngramDBChatMessageHistory
 
-        h = AgentMemoryDBChatMessageHistory(
+        h = EngramDBChatMessageHistory(
             base_url="http://localhost:8100",
             user_id=user_id,
             session_id=session_id,

@@ -1,5 +1,5 @@
 # ═══════════════════════════════════════════════════════════
-# AgentMemoryDB — Docker Compose
+# EngramDB — Docker Compose
 # ═══════════════════════════════════════════════════════════
 # Quick start:
 #   docker compose up -d            → start everything
@@ -12,7 +12,7 @@ services:
   # ── PostgreSQL + pgvector ────────────────────────────────
   db:
     image: pgvector/pgvector:pg16
-    container_name: agentmemodb-postgres
+    container_name: engramdb-postgres
     restart: unless-stopped
     environment:
       POSTGRES_USER: agentmem
@@ -30,12 +30,12 @@ services:
       retries: 10
     shm_size: 256mb
 
-  # ── AgentMemoryDB API Server ─────────────────────────────
+  # ── EngramDB API Server ─────────────────────────────
   app:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: agentmemodb-app
+    container_name: engramdb-app
     restart: unless-stopped
     environment:
       DATABASE_URL: "postgresql+asyncpg://agentmem:agentmem_secret@db:5432/agentmemorydb"
@@ -69,7 +69,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: agentmemodb-app-dev
+    container_name: engramdb-app-dev
     profiles: ["dev"]
     environment:
       DATABASE_URL: "postgresql+asyncpg://agentmem:agentmem_secret@db:5432/agentmemorydb"

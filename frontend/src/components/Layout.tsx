@@ -20,7 +20,7 @@ export default function Layout() {
       <header className="bg-gh-canvas border-b border-gh-border px-6 h-12 flex items-center gap-4 shrink-0">
         <div className="flex items-center gap-2">
           <Brain className="w-5 h-5 text-gh-accent" />
-          <span className="font-semibold text-[15px] text-gh-accent">AgentMemoryDB</span>
+          <span className="font-semibold text-[15px] text-gh-accent">EngramDB</span>
           <span className="text-[10px] bg-gh-accent text-gh-bg px-2 py-0.5 rounded-full font-bold tracking-wide">
             EXPLORER
           </span>

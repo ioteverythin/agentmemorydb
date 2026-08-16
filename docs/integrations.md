@@ -1,6 +1,6 @@
 # Framework Integrations
 
-AgentMemoryDB provides drop-in integrations for the two most popular AI agent frameworks.
+EngramDB provides drop-in integrations for the two most popular AI agent frameworks.
 
 ---
 
@@ -9,34 +9,34 @@ AgentMemoryDB provides drop-in integrations for the two most popular AI agent fr
 Install dependencies:
 
 ```bash
-pip install langchain-core langchain-openai agentmemodb
+pip install langchain-core langchain-openai engramdb
 ```
 
 Import:
 
 ```python
-import agentmemodb
-from agentmemodb.integrations.langchain import (
-    AgentMemoryDBChatHistory,
-    AgentMemoryDBRetriever,
-    AgentMemoryDBConversationMemory,
+import engramdb
+from engramdb.integrations.langchain import (
+    EngramDBChatHistory,
+    EngramDBRetriever,
+    EngramDBConversationMemory,
     create_memory_tool,
 )
 
-db = agentmemodb.Client()  # or HttpClient for the Docker server
+db = engramdb.Client()  # or HttpClient for the Docker server
 ```
 
 ---
 
 ### 1. Chat Message History
 
-`AgentMemoryDBChatHistory` is a drop-in replacement for any LangChain `BaseChatMessageHistory`. Messages are persisted as `episodic` memories and survive process restarts.
+`EngramDBChatHistory` is a drop-in replacement for any LangChain `BaseChatMessageHistory`. Messages are persisted as `episodic` memories and survive process restarts.
 
 ```python
-from agentmemodb.integrations.langchain import AgentMemoryDBChatHistory
+from engramdb.integrations.langchain import EngramDBChatHistory
 
 # Create or resume a session
-history = AgentMemoryDBChatHistory(
+history = EngramDBChatHistory(
     client=db,
     user_id="user-1",
     session_id="session-abc",  # deterministic = resumes on restart
@@ -64,8 +64,8 @@ from langchain_openai import ChatOpenAI
 
 llm = ChatOpenAI(model="gpt-4o")
 
-def get_history(session_id: str) -> AgentMemoryDBChatHistory:
-    return AgentMemoryDBChatHistory(
+def get_history(session_id: str) -> EngramDBChatHistory:
+    return EngramDBChatHistory(
         client=db,
         user_id="user-1",
         session_id=session_id,
@@ -89,12 +89,12 @@ print(response.content)
 
 ### 2. Retriever
 
-`AgentMemoryDBRetriever` performs semantic search over stored memories and returns LangChain `Document` objects. Plug it into any `RetrievalQA`, `ConversationalRetrievalChain`, or `create_retrieval_chain`.
+`EngramDBRetriever` performs semantic search over stored memories and returns LangChain `Document` objects. Plug it into any `RetrievalQA`, `ConversationalRetrievalChain`, or `create_retrieval_chain`.
 
 ```python
-from agentmemodb.integrations.langchain import AgentMemoryDBRetriever
+from engramdb.integrations.langchain import EngramDBRetriever
 
-retriever = AgentMemoryDBRetriever(
+retriever = EngramDBRetriever(
     client=db,
     user_id="user-1",
     top_k=5,
@@ -156,7 +156,7 @@ print(result["answer"])
 from langchain_openai import ChatOpenAI
 from langchain.agents import AgentExecutor, create_openai_tools_agent
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from agentmemodb.integrations.langchain import create_memory_tool
+from engramdb.integrations.langchain import create_memory_tool
 
 # Create the tool
 memory_tool = create_memory_tool(
@@ -196,14 +196,14 @@ print(response["output"])
 
 ### 4. Conversation Memory (Legacy Chains)
 
-`AgentMemoryDBConversationMemory` supports older LangChain chains that use the `memory=` parameter. It combines chat history with semantic retrieval of relevant long-term memories.
+`EngramDBConversationMemory` supports older LangChain chains that use the `memory=` parameter. It combines chat history with semantic retrieval of relevant long-term memories.
 
 ```python
 from langchain.chains import ConversationChain
 from langchain_openai import ChatOpenAI
-from agentmemodb.integrations.langchain import AgentMemoryDBConversationMemory
+from engramdb.integrations.langchain import EngramDBConversationMemory
 
-memory = AgentMemoryDBConversationMemory(
+memory = EngramDBConversationMemory(
     client=db,
     user_id="user-1",
     session_id="session-xyz",
@@ -229,29 +229,29 @@ print(response["response"])
 Install dependencies:
 
 ```bash
-pip install langgraph agentmemodb
+pip install langgraph engramdb
 ```
 
 Import:
 
 ```python
-import agentmemodb
-from agentmemodb.integrations.langgraph import (
-    AgentMemoryDBStore,
-    AgentMemoryDBSaver,
+import engramdb
+from engramdb.integrations.langgraph import (
+    EngramDBStore,
+    EngramDBSaver,
 )
 
-db = agentmemodb.Client()
+db = engramdb.Client()
 ```
 
 ---
 
-### 1. AgentMemoryDBStore — Persistent Knowledge for Nodes
+### 1. EngramDBStore — Persistent Knowledge for Nodes
 
-`AgentMemoryDBStore` gives LangGraph nodes the ability to read and write persistent, searchable long-term memory. Unlike graph state (ephemeral per run), store memories survive across runs.
+`EngramDBStore` gives LangGraph nodes the ability to read and write persistent, searchable long-term memory. Unlike graph state (ephemeral per run), store memories survive across runs.
 
 ```python
-store = AgentMemoryDBStore(
+store = EngramDBStore(
     client=db,
     user_id="user-1",
     namespace="agent",   # optional prefix for all keys
@@ -373,9 +373,9 @@ print(result["response"])
 
 ---
 
-### 2. AgentMemoryDBSaver — Graph State Checkpoints
+### 2. EngramDBSaver — Graph State Checkpoints
 
-`AgentMemoryDBSaver` persists full LangGraph state snapshots, enabling:
+`EngramDBSaver` persists full LangGraph state snapshots, enabling:
 - **Pause/Resume** — stop and restart graph execution at any point
 - **Time-travel** — revisit any previous state
 - **Branching** — fork execution from a checkpoint with different inputs
@@ -383,9 +383,9 @@ print(result["response"])
 
 ```python
 from langgraph.graph import StateGraph
-from agentmemodb.integrations.langgraph import AgentMemoryDBSaver
+from engramdb.integrations.langgraph import EngramDBSaver
 
-saver = AgentMemoryDBSaver(
+saver = EngramDBSaver(
     client=db,
     user_id="system",   # user context for checkpoint storage
 )
@@ -441,16 +441,16 @@ result = app.invoke(
 Full LangGraph agent with persistent memory (store) and
 state checkpointing (saver).
 """
-import agentmemodb
-from agentmemodb.integrations.langgraph import AgentMemoryDBStore, AgentMemoryDBSaver
+import engramdb
+from engramdb.integrations.langgraph import EngramDBStore, EngramDBSaver
 from langgraph.graph import StateGraph, END
 from langchain_openai import ChatOpenAI
 from typing import TypedDict
 
 # Setup
-db = agentmemodb.Client(path="./agent_data")
-store = AgentMemoryDBStore(client=db, user_id="alice", namespace="assistant")
-saver = AgentMemoryDBSaver(client=db, user_id="system")
+db = engramdb.Client(path="./agent_data")
+store = EngramDBStore(client=db, user_id="alice", namespace="assistant")
+saver = EngramDBSaver(client=db, user_id="system")
 
 class State(TypedDict):
     input: str
@@ -528,9 +528,9 @@ npm install ./sdks/typescript
 ### Usage
 
 ```typescript
-import { AgentMemoryDBClient } from 'agentmemodb-sdk';
+import { EngramDBClient } from 'engramdb-sdk';
 
-const client = new AgentMemoryDBClient({
+const client = new EngramDBClient({
   baseUrl: 'http://localhost:8100',
   apiKey: 'amdb_your_key_here',  // optional
   timeout: 30000,
@@ -577,10 +577,10 @@ const imported = await client.importMemories({ userId: newUserId, data: exported
 
 | Scenario | Recommended |
 |---|---|
-| New LangChain app with persistent memory | `AgentMemoryDBChatHistory` + `AgentMemoryDBRetriever` |
+| New LangChain app with persistent memory | `EngramDBChatHistory` + `EngramDBRetriever` |
 | LangChain agent that learns during execution | `create_memory_tool` |
-| LangGraph agent with long-term knowledge | `AgentMemoryDBStore` |
-| LangGraph multi-session or pause/resume | `AgentMemoryDBSaver` |
-| Production system, high throughput | `app.sdk.client.AgentMemoryDBClient` (async) |
-| Scripts, notebooks, quick experiments | `agentmemodb.Client` (embedded) |
+| LangGraph agent with long-term knowledge | `EngramDBStore` |
+| LangGraph multi-session or pause/resume | `EngramDBSaver` |
+| Production system, high throughput | `app.sdk.client.EngramDBClient` (async) |
+| Scripts, notebooks, quick experiments | `engramdb.Client` (embedded) |
 | Frontend / Node.js | TypeScript SDK |

@@ -1,4 +1,4 @@
-"""SQLite-backed vector store for the embedded AgentMemoryDB client.
+"""SQLite-backed vector store for the embedded EngramDB client.
 
 Uses plain ``sqlite3`` (stdlib) for storage and ``numpy`` for
 in-memory cosine-similarity search.  No PostgreSQL, no pgvector,
@@ -25,7 +25,7 @@ from typing import Any
 
 import numpy as np
 
-from agentmemodb.types import Memory, MemoryVersion, SearchResult
+from engramdb.types import Memory, MemoryVersion, SearchResult
 
 
 class SQLiteStore:

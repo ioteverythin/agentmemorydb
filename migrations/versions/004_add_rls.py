@@ -20,22 +20,22 @@ def upgrade() -> None:
     op.execute("""
         DO $$
         BEGIN
-            IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'agentmemodb_anon') THEN
-                CREATE ROLE agentmemodb_anon NOLOGIN;
+            IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'engramdb_anon') THEN
+                CREATE ROLE engramdb_anon NOLOGIN;
             END IF;
-            IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'agentmemodb_user') THEN
-                CREATE ROLE agentmemodb_user NOLOGIN;
+            IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'engramdb_user') THEN
+                CREATE ROLE engramdb_user NOLOGIN;
             END IF;
-            IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'agentmemodb_admin') THEN
-                CREATE ROLE agentmemodb_admin NOLOGIN;
+            IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'engramdb_admin') THEN
+                CREATE ROLE engramdb_admin NOLOGIN;
             END IF;
         END$$;
     """)
 
     # Grant base permissions
-    op.execute("GRANT USAGE ON SCHEMA public TO agentmemodb_anon, agentmemodb_user, agentmemodb_admin;")
-    op.execute("GRANT ALL ON ALL TABLES IN SCHEMA public TO agentmemodb_admin;")
-    op.execute("GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO agentmemodb_admin;")
+    op.execute("GRANT USAGE ON SCHEMA public TO engramdb_anon, engramdb_user, engramdb_admin;")
+    op.execute("GRANT ALL ON ALL TABLES IN SCHEMA public TO engramdb_admin;")
+    op.execute("GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO engramdb_admin;")
 
     # ── Enable RLS on core tables ───────────────────────────
     tables = ["memories", "events", "observations", "memory_links", "memory_access_log"]
@@ -57,7 +57,7 @@ def upgrade() -> None:
     """)
     op.execute("""
         CREATE POLICY memories_admin_all ON memories
-            TO agentmemodb_admin
+            TO engramdb_admin
             USING (true);
     """)
 
@@ -73,7 +73,7 @@ def upgrade() -> None:
     """)
     op.execute("""
         CREATE POLICY events_admin_all ON events
-            TO agentmemodb_admin
+            TO engramdb_admin
             USING (true);
     """)
 
@@ -84,7 +84,7 @@ def upgrade() -> None:
     """)
     op.execute("""
         CREATE POLICY observations_admin_all ON observations
-            TO agentmemodb_admin
+            TO engramdb_admin
             USING (true);
     """)
 
@@ -101,7 +101,7 @@ def upgrade() -> None:
     """)
     op.execute("""
         CREATE POLICY links_admin_all ON memory_links
-            TO agentmemodb_admin
+            TO engramdb_admin
             USING (true);
     """)
 
@@ -117,14 +117,14 @@ def upgrade() -> None:
     """)
     op.execute("""
         CREATE POLICY access_log_admin_all ON memory_access_log
-            TO agentmemodb_admin
+            TO engramdb_admin
             USING (true);
     """)
 
     # ── Grant table-level permissions to roles ──────────────
     for table in tables:
-        op.execute(f"GRANT SELECT ON {table} TO agentmemodb_anon;")
-        op.execute(f"GRANT SELECT, INSERT, UPDATE, DELETE ON {table} TO agentmemodb_user;")
+        op.execute(f"GRANT SELECT ON {table} TO engramdb_anon;")
+        op.execute(f"GRANT SELECT, INSERT, UPDATE, DELETE ON {table} TO engramdb_user;")
 
     # ── Helper function: set tenant context ─────────────────
     op.execute("""
@@ -139,7 +139,7 @@ def upgrade() -> None:
         $$;
     """)
 
-    op.execute("GRANT EXECUTE ON FUNCTION set_tenant_context(uuid) TO agentmemodb_user, agentmemodb_admin;")
+    op.execute("GRANT EXECUTE ON FUNCTION set_tenant_context(uuid) TO engramdb_user, engramdb_admin;")
 
 
 def downgrade() -> None:
@@ -170,6 +170,6 @@ def downgrade() -> None:
         op.execute(f"ALTER TABLE {table} DISABLE ROW LEVEL SECURITY;")
 
     # Drop roles
-    op.execute("DROP ROLE IF EXISTS agentmemodb_anon;")
-    op.execute("DROP ROLE IF EXISTS agentmemodb_user;")
-    op.execute("DROP ROLE IF EXISTS agentmemodb_admin;")
+    op.execute("DROP ROLE IF EXISTS engramdb_anon;")
+    op.execute("DROP ROLE IF EXISTS engramdb_user;")
+    op.execute("DROP ROLE IF EXISTS engramdb_admin;")

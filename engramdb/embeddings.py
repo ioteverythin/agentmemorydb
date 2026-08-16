@@ -1,4 +1,4 @@
-"""Embedding providers for the AgentMemoryDB embedded client.
+"""Embedding providers for the EngramDB embedded client.
 
 Providers
 ---------
@@ -68,7 +68,7 @@ class DummyEmbedding:
 class OpenAIEmbedding:
     """OpenAI-powered embeddings.
 
-    Requires ``pip install agentmemodb[openai]`` (or ``pip install openai``).
+    Requires ``pip install engramdb[openai]`` (or ``pip install openai``).
     """
 
     def __init__(
@@ -82,7 +82,7 @@ class OpenAIEmbedding:
         except ImportError:
             raise ImportError(
                 "The openai package is required for OpenAIEmbedding. "
-                "Install it with:  pip install agentmemodb[openai]"
+                "Install it with:  pip install engramdb[openai]"
             ) from None
 
         import openai as _openai

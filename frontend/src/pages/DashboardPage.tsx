@@ -23,7 +23,7 @@ export default function DashboardPage() {
     return (
       <div className="flex flex-col items-center justify-center h-full text-gh-dim">
         <div className="text-5xl mb-4">🧠</div>
-        <div className="text-lg mb-2">Welcome to AgentMemoryDB Explorer</div>
+        <div className="text-lg mb-2">Welcome to EngramDB Explorer</div>
         <div className="text-sm">Enter your API URL above and click Connect to get started</div>
       </div>
     );

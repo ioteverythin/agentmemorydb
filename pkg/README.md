@@ -1,10 +1,10 @@
-# AgentMemoryDB
+# EngramDB
 
 **Lightweight, embeddable memory backend for AI agents.**
 
 Short-term conversation buffer + long-term knowledge store + semantic search + PII masking — all in a single pip install, no server required.
 
-[![PyPI version](https://badge.fury.io/py/agentmemodb.svg)](https://pypi.org/project/agentmemodb/)
+[![PyPI version](https://badge.fury.io/py/engramdb.svg)](https://pypi.org/project/engramdb/)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
@@ -13,13 +13,13 @@ Short-term conversation buffer + long-term knowledge store + semantic search + P
 ## Install
 
 ```bash
-pip install agentmemodb                     # core (SQLite embedded, zero config)
-pip install agentmemodb[openai]             # + OpenAI embeddings
-pip install agentmemodb[huggingface]        # + HuggingFace sentence-transformers
-pip install agentmemodb[langchain]          # + LangChain integration
-pip install agentmemodb[langgraph]          # + LangGraph integration
-pip install agentmemodb[remote]             # + connect to AgentMemoryDB server
-pip install agentmemodb[all]                # everything
+pip install engramdb                     # core (SQLite embedded, zero config)
+pip install engramdb[openai]             # + OpenAI embeddings
+pip install engramdb[huggingface]        # + HuggingFace sentence-transformers
+pip install engramdb[langchain]          # + LangChain integration
+pip install engramdb[langgraph]          # + LangGraph integration
+pip install engramdb[remote]             # + connect to EngramDB server
+pip install engramdb[all]                # everything
 ```
 
 ## Quick Start
@@ -27,10 +27,10 @@ pip install agentmemodb[all]                # everything
 ### Embedded Mode (SQLite, zero config)
 
 ```python
-import agentmemodb
+import engramdb
 
-db = agentmemodb.Client()                       # stores in ./agentmemodb_data/
-db = agentmemodb.Client(path=":memory:")        # in-memory (for tests)
+db = engramdb.Client()                       # stores in ./engramdb_data/
+db = engramdb.Client(path=":memory:")        # in-memory (for tests)
 
 # Store memories
 db.upsert("user-1", "pref:lang", "User prefers Python", memory_type="semantic")
@@ -53,7 +53,7 @@ db.close()
 ### Remote Mode (connect to server)
 
 ```python
-db = agentmemodb.HttpClient("http://localhost:8100", api_key="amdb_...")
+db = engramdb.HttpClient("http://localhost:8100", api_key="amdb_...")
 
 # Same API as embedded!
 db.upsert("user-1", "pref:lang", "User prefers Python")
@@ -68,7 +68,7 @@ db.close()
 A unified interface that combines conversation history (short-term) with persistent knowledge (long-term):
 
 ```python
-from agentmemodb import MemoryManager
+from engramdb import MemoryManager
 
 with MemoryManager("user-1") as mgr:
     # ── Short-term: conversation buffer ──
@@ -99,24 +99,24 @@ with MemoryManager("user-1") as mgr:
 ## LangChain Integration
 
 ```python
-from agentmemodb import Client
-from agentmemodb.integrations.langchain import (
-    AgentMemoryDBChatHistory,
-    AgentMemoryDBRetriever,
-    AgentMemoryDBConversationMemory,
+from engramdb import Client
+from engramdb.integrations.langchain import (
+    EngramDBChatHistory,
+    EngramDBRetriever,
+    EngramDBConversationMemory,
     create_memory_tool,
 )
 
 db = Client(path=":memory:")
 
 # Chat history (BaseChatMessageHistory)
-history = AgentMemoryDBChatHistory(client=db, user_id="u1", session_id="s1")
+history = EngramDBChatHistory(client=db, user_id="u1", session_id="s1")
 history.add_user_message("Hello!")
 history.add_ai_message("Hi there!")
 messages = history.messages  # [HumanMessage, AIMessage]
 
 # Retriever (semantic search → Documents)
-retriever = AgentMemoryDBRetriever(client=db, user_id="u1", top_k=5)
+retriever = EngramDBRetriever(client=db, user_id="u1", top_k=5)
 docs = retriever.invoke("What does the user prefer?")
 
 # Memory tool (for agents)
@@ -125,7 +125,7 @@ tool = create_memory_tool(db, user_id="u1")
 # Agent can call: tool('{"action": "recall", "query": "q"}')
 
 # Conversation memory (history + relevant knowledge)
-memory = AgentMemoryDBConversationMemory(client=db, user_id="u1", session_id="s1")
+memory = EngramDBConversationMemory(client=db, user_id="u1", session_id="s1")
 variables = memory.load_memory_variables({"input": "question"})
 # {"history": "...", "relevant_context": "..."}
 ```
@@ -135,10 +135,10 @@ variables = memory.load_memory_variables({"input": "question"})
 ## LangGraph Integration
 
 ```python
-from agentmemodb import Client
-from agentmemodb.integrations.langgraph import (
-    AgentMemoryDBStore,
-    AgentMemoryDBSaver,
+from engramdb import Client
+from engramdb.integrations.langgraph import (
+    EngramDBStore,
+    EngramDBSaver,
     create_memory_node,
     create_save_memory_node,
 )
@@ -146,13 +146,13 @@ from agentmemodb.integrations.langgraph import (
 db = Client(path=":memory:")
 
 # Store (long-term memory for graph nodes)
-store = AgentMemoryDBStore(client=db, user_id="agent-1")
+store = EngramDBStore(client=db, user_id="agent-1")
 store.put("user:name", "Josh — full-stack developer")
 results = store.search("Who is the user?", top_k=3)
 context = store.search_as_text("user preferences")  # formatted for prompts
 
 # Checkpoint saver (persist graph state)
-saver = AgentMemoryDBSaver(client=db, user_id="system")
+saver = EngramDBSaver(client=db, user_id="system")
 config = {"configurable": {"thread_id": "thread-1"}}
 saver.put(config, {"messages": ["Hi!"], "step": 1}, metadata={"node": "start"})
 state = saver.get(config)  # restore latest checkpoint
@@ -175,7 +175,7 @@ graph.add_node("save", save)
 Built-in write-time PII detection and replacement — personal data never reaches the database:
 
 ```python
-db = agentmemodb.Client(mask_pii=True)
+db = engramdb.Client(mask_pii=True)
 db.upsert("u1", "contact", "Email josh@company.com, SSN 123-45-6789")
 mem = db.get("u1", "contact")
 print(mem.content)  # "Email [EMAIL], SSN [SSN]"
@@ -190,8 +190,8 @@ Detects: email, phone, SSN, credit card, IP address, passport, date of birth.
 | Provider | Install | Usage |
 |----------|---------|-------|
 | **Dummy** (default) | — | `Client()` — hash-based, no API key |
-| **OpenAI** | `pip install agentmemodb[openai]` | `Client(embedding_fn=OpenAIEmbedding(api_key="sk-..."))` |
-| **HuggingFace** | `pip install agentmemodb[huggingface]` | Custom: see below |
+| **OpenAI** | `pip install engramdb[openai]` | `Client(embedding_fn=OpenAIEmbedding(api_key="sk-..."))` |
+| **HuggingFace** | `pip install engramdb[huggingface]` | Custom: see below |
 | **Custom** | — | Any callable matching `EmbeddingFunction` protocol |
 
 ### Custom Embedding Example
@@ -209,7 +209,7 @@ class MyEmbedding:
     def __call__(self, texts: list[str]) -> list[list[float]]:
         return model.encode(texts, normalize_embeddings=True).tolist()
 
-db = agentmemodb.Client(embedding_fn=MyEmbedding())
+db = engramdb.Client(embedding_fn=MyEmbedding())
 ```
 
 ---
@@ -219,7 +219,7 @@ db = agentmemodb.Client(embedding_fn=MyEmbedding())
 | Feature | Description |
 |---------|-------------|
 | **Embedded mode** | SQLite + NumPy, zero config, `pip install` and go |
-| **Remote mode** | Connect to AgentMemoryDB server via HTTP |
+| **Remote mode** | Connect to EngramDB server via HTTP |
 | **Short-term memory** | Conversation buffer with thread isolation, role filtering |
 | **Long-term memory** | Persistent semantic knowledge with importance/confidence scores |
 | **MemoryManager** | Unified short+long-term with `promote()` and `get_context_window()` |
@@ -264,10 +264,10 @@ db = agentmemodb.Client(embedding_fn=MyEmbedding())
 
 ## Full Server
 
-AgentMemoryDB also runs as a **full server** with PostgreSQL + pgvector, FastAPI, WebSocket, MCP protocol, React UI, and 55+ REST endpoints. See the [full documentation](https://github.com/agentmemorydb/agentmemorydb) for details.
+EngramDB also runs as a **full server** with PostgreSQL + pgvector, FastAPI, WebSocket, MCP protocol, React UI, and 55+ REST endpoints. See the [full documentation](https://github.com/engramdb/engramdb) for details.
 
 ---
 
 ## License
 
-Apache 2.0 — see [LICENSE](https://github.com/agentmemorydb/agentmemorydb/blob/main/LICENSE).
+Apache 2.0 — see [LICENSE](https://github.com/engramdb/engramdb/blob/main/LICENSE).

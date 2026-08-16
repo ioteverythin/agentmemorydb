@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-AgentMemoryDB — Live Demo Script
+EngramDB — Live Demo Script
 =================================
 
 Demonstrates the pip package with:
@@ -32,12 +32,12 @@ import os
 import sys
 import time
 
-# ── Make sure the local agentmemodb package is importable ──
+# ── Make sure the local engramdb package is importable ──
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, ROOT)
 
-import agentmemodb
-from agentmemodb.embeddings import DummyEmbedding, EmbeddingFunction, OpenAIEmbedding
+import engramdb
+from engramdb.embeddings import DummyEmbedding, EmbeddingFunction, OpenAIEmbedding
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -88,7 +88,7 @@ def divider(title: str) -> None:
     print(f"{'─' * 60}")
 
 
-def print_results(results: list[agentmemodb.SearchResult], label: str = "Search Results") -> None:
+def print_results(results: list[engramdb.SearchResult], label: str = "Search Results") -> None:
     print(f"\n  {label}  ({len(results)} hits)")
     for i, r in enumerate(results, 1):
         print(f"    {i}. [{r.score:.4f}]  {r.key}  →  {r.content}")
@@ -112,7 +112,7 @@ def build_embedding(provider: str, model_name: str | None) -> EmbeddingFunction:
 #  Demo Sections
 # ═══════════════════════════════════════════════════════════════════
 
-def demo_basic_crud(db: agentmemodb.Client) -> None:
+def demo_basic_crud(db: engramdb.Client) -> None:
     """Basic upsert, get, list, count, delete."""
     divider("1 · Basic CRUD")
 
@@ -145,7 +145,7 @@ def demo_basic_crud(db: agentmemodb.Client) -> None:
     print(f"  List (semantic):  {len(all_prefs)} memories")
 
 
-def demo_semantic_search(db: agentmemodb.Client) -> None:
+def demo_semantic_search(db: engramdb.Client) -> None:
     """Show semantic search in action."""
     divider("2 · Semantic Search")
 
@@ -164,7 +164,7 @@ def demo_semantic_search(db: agentmemodb.Client) -> None:
             print(f"     {i}. [{r.score:.4f}]  {r.key}  →  {r.content}")
 
 
-def demo_versioning(db: agentmemodb.Client) -> None:
+def demo_versioning(db: engramdb.Client) -> None:
     """Show content-hash dedup and versioning."""
     divider("3 · Versioning & Deduplication")
 
@@ -191,7 +191,7 @@ def demo_versioning(db: agentmemodb.Client) -> None:
         print(f"\n  Current value: v{current.version} → {current.content}")
 
 
-def demo_multi_user(db: agentmemodb.Client) -> None:
+def demo_multi_user(db: engramdb.Client) -> None:
     """Show user isolation."""
     divider("4 · Multi-User Isolation")
 
@@ -215,7 +215,7 @@ def demo_multi_user(db: agentmemodb.Client) -> None:
     print(f"  ✓ Data is fully isolated between users")
 
 
-def demo_memory_types(db: agentmemodb.Client) -> None:
+def demo_memory_types(db: engramdb.Client) -> None:
     """Show different memory types and filtering."""
     divider("5 · Memory Types & Scopes")
 
@@ -256,7 +256,7 @@ def demo_memory_types(db: agentmemodb.Client) -> None:
     print(f"\n  Total memories across all types: {total}")
 
 
-def demo_metadata(db: agentmemodb.Client) -> None:
+def demo_metadata(db: engramdb.Client) -> None:
     """Show metadata storage and retrieval."""
     divider("6 · Rich Metadata")
 
@@ -287,14 +287,14 @@ def demo_metadata(db: agentmemodb.Client) -> None:
         print(f"  Hash:       {mem.content_hash[:16]}…")
 
 
-def demo_pii_masking(db_clean: agentmemodb.Client) -> None:
+def demo_pii_masking(db_clean: engramdb.Client) -> None:
     """Show PII masking in action (separate client with mask_pii=True)."""
     divider("7 · PII Masking")
 
     print("  Creating a separate client with mask_pii=True ...\n")
 
     # We create a separate in-memory client with PII masking enabled
-    with agentmemodb.Client(path=":memory:", mask_pii=True) as masked_db:
+    with engramdb.Client(path=":memory:", mask_pii=True) as masked_db:
         # Store content with PII
         raw_text = "Contact Josh at josh.miller@company.com or call +1-555-867-5309. SSN: 123-45-6789"
         print(f"  Input:   {raw_text}")
@@ -317,7 +317,7 @@ def demo_pii_masking(db_clean: agentmemodb.Client) -> None:
             print(f"    Out: {m.content}")
 
 
-def demo_delete_and_count(db: agentmemodb.Client) -> None:
+def demo_delete_and_count(db: engramdb.Client) -> None:
     """Show delete operations."""
     divider("8 · Delete & Cleanup")
 
@@ -335,7 +335,7 @@ def demo_delete_and_count(db: agentmemodb.Client) -> None:
     print(f"  Delete nonexistent:    {gone}")
 
 
-def demo_scale_test(db: agentmemodb.Client) -> None:
+def demo_scale_test(db: engramdb.Client) -> None:
     """Quick scale test — insert many memories and search."""
     divider("9 · Scale Test (500 memories)")
 
@@ -360,12 +360,12 @@ def demo_scale_test(db: agentmemodb.Client) -> None:
     print(f"\n  Total: {count} memories")
 
 
-def demo_context_manager(db: agentmemodb.Client) -> None:
+def demo_context_manager(db: engramdb.Client) -> None:
     """Show context manager pattern."""
     divider("10 · Context Manager Pattern")
 
-    print("  with agentmemodb.Client(path=':memory:') as tmp:")
-    with agentmemodb.Client(path=":memory:") as tmp:
+    print("  with engramdb.Client(path=':memory:') as tmp:")
+    with engramdb.Client(path=":memory:") as tmp:
         tmp.upsert("u1", "greeting", "Hello from a context-managed client!")
         mem = tmp.get("u1", "greeting")
         print(f"    → {mem.content}")
@@ -379,7 +379,7 @@ def demo_context_manager(db: agentmemodb.Client) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="AgentMemoryDB — Pip Package Live Demo",
+        description="EngramDB — Pip Package Live Demo",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -404,8 +404,8 @@ Examples:
     # ── Banner ──
     print()
     print("╔══════════════════════════════════════════════════════════╗")
-    print("║       AgentMemoryDB — Pip Package Live Demo             ║")
-    print(f"║       Version {agentmemodb.__version__}                                    ║")
+    print("║       EngramDB — Pip Package Live Demo             ║")
+    print(f"║       Version {engramdb.__version__}                                    ║")
     print("╚══════════════════════════════════════════════════════════╝")
     print()
 
@@ -415,7 +415,7 @@ Examples:
     print(f"  Dimension: {embed_fn.dimension}")
 
     # ── Create in-memory client ──
-    db = agentmemodb.Client(path=":memory:", embedding_fn=embed_fn)
+    db = engramdb.Client(path=":memory:", embedding_fn=embed_fn)
     print(f"  Client: {db}")
     print(f"  Storage: in-memory SQLite (no files on disk)")
 

@@ -8,11 +8,11 @@
 
 ## Reporting a Vulnerability
 
-If you discover a security vulnerability in AgentMemoryDB, please report it responsibly.
+If you discover a security vulnerability in EngramDB, please report it responsibly.
 
 **Do NOT open a public GitHub issue for security vulnerabilities.**
 
-Instead, please email: **security@agentmemorydb.dev** (placeholder)
+Instead, please email: **security@engramdb.dev** (placeholder)
 
 Include:
 - Description of the vulnerability
@@ -24,7 +24,7 @@ We will acknowledge receipt within 48 hours and aim to provide a fix within 7 da
 
 ## Security Considerations
 
-AgentMemoryDB stores potentially sensitive agent memory data. When deploying:
+EngramDB stores potentially sensitive agent memory data. When deploying:
 
 - Always use TLS for database connections in production
 - Use strong, unique database passwords

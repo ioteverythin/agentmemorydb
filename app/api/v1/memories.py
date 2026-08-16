@@ -9,8 +9,12 @@ from fastapi import APIRouter, Depends, Query
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.auth import enforce_tenant, get_current_api_key
 from app.db.session import get_session
+from app.models.api_key import APIKey
 from app.schemas.memory import (
+    ContextAssembleRequest,
+    ContextAssembleResponse,
     MemoryResponse,
     MemorySearchRequest,
     MemorySearchResponse,
@@ -19,6 +23,7 @@ from app.schemas.memory import (
     MemoryVersionResponse,
 )
 from app.schemas.memory_link import MemoryLinkResponse
+from app.services.context_assembly_service import ContextAssemblyService
 from app.services.memory_service import MemoryService
 from app.services.retrieval_service import RetrievalService
 
@@ -29,14 +34,15 @@ router = APIRouter()
 async def upsert_memory(
     data: MemoryUpsert,
     session: AsyncSession = Depends(get_session),
+    api_key: APIKey | None = Depends(get_current_api_key),
 ) -> MemoryResponse:
     """Create or update a canonical memory.
 
     If an active memory with the same ``memory_key`` already exists for the
     user/scope/project, the previous state is snapshotted and the canonical
-    record is updated.  If ``is_contradiction`` is True, conflict links are
-    created automatically.
+    record is updated.
     """
+    enforce_tenant(api_key, data.user_id)
     svc = MemoryService(session)
     memory, _is_new = await svc.upsert(data)
     return MemoryResponse.model_validate(memory)
@@ -56,15 +62,37 @@ async def get_memory(
 async def search_memories(
     data: MemorySearchRequest,
     session: AsyncSession = Depends(get_session),
+    api_key: APIKey | None = Depends(get_current_api_key),
 ) -> MemorySearchResponse:
     """Hybrid retrieval endpoint.
 
-    Supports vector similarity (if embedding or query_text provided),
-    metadata filtering, and composite scoring with optional score breakdown
-    (set ``explain=true``).
+    Fuses dense vector similarity and sparse full-text (BM25) rankings via RRF
+    when a ``query_text`` is present, applies metadata/layer filtering, and
+    re-ranks by composite governance score. Set ``explain=true`` for the
+    per-component score breakdown.
     """
+    enforce_tenant(api_key, data.user_id)
     svc = RetrievalService(session)
     return await svc.search(data)
+
+
+@router.post("/assemble-context", response_model=ContextAssembleResponse)
+async def assemble_context(
+    data: ContextAssembleRequest,
+    session: AsyncSession = Depends(get_session),
+    api_key: APIKey | None = Depends(get_current_api_key),
+) -> ContextAssembleResponse:
+    """Assemble retrieved memories into an injection-safe, budget-capped block.
+
+    Retrieves across the memory pyramid, orders stable layers (persona,
+    scenario) before volatile ones (atom, raw) for prompt-cache friendliness,
+    sanitises each memory against prompt injection, and caps the result by item
+    count and character budget so memory never crowds out the task. The
+    returned ``context`` string is ready to inject into a system/user prompt.
+    """
+    enforce_tenant(api_key, data.user_id)
+    svc = ContextAssemblyService(session)
+    return await svc.assemble(data)
 
 
 @router.post("/stream-search")

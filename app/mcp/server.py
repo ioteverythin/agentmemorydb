@@ -1,4 +1,4 @@
-"""MCP server implementation for AgentMemoryDB.
+"""MCP server implementation for EngramDB.
 
 Provides a JSON-RPC 2.0 compliant MCP server that exposes memory
 operations as tools. Agents using Claude, Cursor, or any MCP-compatible
@@ -18,12 +18,12 @@ from app.mcp.tools import TOOL_REGISTRY, ToolDefinition
 
 # ─── MCP Protocol Constants ──────────────────────────────────────
 MCP_VERSION = "2024-11-05"
-SERVER_NAME = "agentmemorydb"
+SERVER_NAME = "engramdb"
 SERVER_VERSION = "0.1.0"
 
 
 class MCPServer:
-    """Model Context Protocol server for AgentMemoryDB.
+    """Model Context Protocol server for EngramDB.
 
     Handles the JSON-RPC 2.0 messages for:
     - initialize / initialized
@@ -146,13 +146,13 @@ class MCPServer:
         return {
             "resources": [
                 {
-                    "uri": "agentmemorydb://stats",
+                    "uri": "engramdb://stats",
                     "name": "Memory System Statistics",
                     "description": "Overview of the memory system: counts, types, health.",
                     "mimeType": "application/json",
                 },
                 {
-                    "uri": "agentmemorydb://schema",
+                    "uri": "engramdb://schema",
                     "name": "Memory Schema Reference",
                     "description": "Available memory types, scopes, statuses, and link types.",
                     "mimeType": "application/json",
@@ -164,7 +164,7 @@ class MCPServer:
         """Read an MCP resource by URI."""
         uri = params.get("uri", "")
 
-        if uri == "agentmemorydb://schema":
+        if uri == "engramdb://schema":
             return {
                 "contents": [
                     {
@@ -209,7 +209,7 @@ class MCPServer:
                 ]
             }
 
-        if uri == "agentmemorydb://stats":
+        if uri == "engramdb://stats":
             return {
                 "contents": [
                     {

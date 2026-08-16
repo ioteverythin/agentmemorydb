@@ -1,6 +1,6 @@
-# AgentMemoryDB Documentation
+# EngramDB Documentation
 
-Welcome to the AgentMemoryDB documentation. Use the guides below to learn how to use every feature.
+Welcome to the EngramDB documentation. Use the guides below to learn how to use every feature.
 
 ---
 

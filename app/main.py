@@ -1,7 +1,8 @@
-"""FastAPI application entrypoint for AgentMemoryDB."""
+"""FastAPI application entrypoint for EngramDB."""
 
 from __future__ import annotations
 
+import contextlib
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -53,19 +54,29 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     else:
         set_embedding_provider(DummyEmbeddingProvider())
 
-    # Start scheduled maintenance worker
-    _scheduler = None
-    if settings.enable_scheduler:
-        from app.workers.scheduler import MaintenanceScheduler
+    # Start scheduled maintenance worker as a background task. ``start()`` is
+    # an infinite loop, so it must run as a task (not be awaited inline) and be
+    # cancelled on shutdown. Use the module singleton so /scheduler endpoints
+    # report the running instance rather than a second, idle one.
+    import asyncio
 
-        _scheduler = MaintenanceScheduler()
-        _scheduler.start()
+    _scheduler = None
+    _scheduler_task: asyncio.Task | None = None
+    if settings.enable_scheduler:
+        from app.workers.scheduler import get_scheduler
+
+        _scheduler = get_scheduler()
+        _scheduler_task = asyncio.create_task(_scheduler.start())
 
     yield
 
-    # Shutdown: stop scheduler
+    # Shutdown: stop scheduler and cancel its task.
     if _scheduler is not None:
-        _scheduler.stop()
+        await _scheduler.stop()
+    if _scheduler_task is not None:
+        _scheduler_task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await _scheduler_task
 
     # Shutdown: dispose the connection pool.
     from app.db.session import engine
@@ -85,10 +96,15 @@ def create_app() -> FastAPI:
     )
 
     # ── Middleware stack (order matters: outermost first) ────────
+    # A wildcard origin with credentials is rejected by browsers and unsafe, so
+    # never emit that combination. Credentials are only enabled when explicit
+    # origins are configured.
+    origins = [o.strip() for o in settings.cors_allow_origins.split(",") if o.strip()]
+    allow_credentials = settings.cors_allow_credentials and "*" not in origins
     application.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
-        allow_credentials=True,
+        allow_origins=origins or ["*"],
+        allow_credentials=allow_credentials,
         allow_methods=["*"],
         allow_headers=["*"],
     )

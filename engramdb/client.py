@@ -1,12 +1,12 @@
-"""Embedded AgentMemoryDB client — SQLite-backed, zero config.
+"""Embedded EngramDB client — SQLite-backed, zero config.
 
 Usage::
 
-    import agentmemodb
+    import engramdb
 
-    db = agentmemodb.Client()                       # default path
-    db = agentmemodb.Client(path=":memory:")        # in-memory (tests)
-    db = agentmemodb.Client(path="./my_memories")   # custom dir
+    db = engramdb.Client()                       # default path
+    db = engramdb.Client(path=":memory:")        # in-memory (tests)
+    db = engramdb.Client(path="./my_memories")   # custom dir
 
     db.upsert("user-1", "pref:lang", "User prefers Python")
     results = db.search("user-1", "language?")
@@ -23,21 +23,21 @@ from __future__ import annotations
 import os
 from typing import Any
 
-from agentmemodb.embeddings import DummyEmbedding, EmbeddingFunction
-from agentmemodb.store import SQLiteStore
-from agentmemodb.types import Memory, MemoryVersion, SearchResult
+from engramdb.embeddings import DummyEmbedding, EmbeddingFunction
+from engramdb.store import SQLiteStore
+from engramdb.types import Memory, MemoryVersion, SearchResult
 
 
 class Client:
-    """In-process AgentMemoryDB backed by SQLite.
+    """In-process EngramDB backed by SQLite.
 
     Parameters
     ----------
     path
         File path for the SQLite database.
-        ``None`` → ``./agentmemodb_data/agentmemodb.sqlite3``.
+        ``None`` → ``./engramdb_data/engramdb.sqlite3``.
         ``":memory:"`` → purely in-memory (no disk I/O).
-        A directory path → stores ``agentmemodb.sqlite3`` inside it.
+        A directory path → stores ``engramdb.sqlite3`` inside it.
     embedding_fn
         Any object satisfying the :class:`EmbeddingFunction` protocol.
         Defaults to :class:`DummyEmbedding` (hash-based, dimension 128).
@@ -55,18 +55,18 @@ class Client:
         # ── Resolve storage path ──
         if path is None:
             path = os.path.join(
-                os.getcwd(), "agentmemodb_data", "agentmemodb.sqlite3"
+                os.getcwd(), "engramdb_data", "engramdb.sqlite3"
             )
         elif path != ":memory:":
             if not path.endswith((".sqlite3", ".db")):
-                path = os.path.join(path, "agentmemodb.sqlite3")
+                path = os.path.join(path, "engramdb.sqlite3")
 
         self._embedding_fn = embedding_fn or DummyEmbedding()
         self._mask_pii = mask_pii
         self._masking_engine = None
 
         if mask_pii:
-            from agentmemodb.masking import PIIMaskingEngine
+            from engramdb.masking import PIIMaskingEngine
 
             self._masking_engine = PIIMaskingEngine()
 
@@ -192,7 +192,7 @@ class Client:
 
     def __repr__(self) -> str:
         return (
-            f"agentmemodb.Client("
+            f"engramdb.Client("
             f"embedding={type(self._embedding_fn).__name__}, "
             f"mask_pii={self._mask_pii})"
         )

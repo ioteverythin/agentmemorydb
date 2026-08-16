@@ -6,7 +6,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    """Central configuration for AgentMemoryDB."""
+    """Central configuration for EngramDB."""
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     )
 
     # ── Application ──────────────────────────────────────────────
-    app_name: str = "AgentMemoryDB"
+    app_name: str = "EngramDB"
     environment: str = "development"
     log_level: str = "INFO"
     enable_docs: bool = True
@@ -36,6 +36,12 @@ class Settings(BaseSettings):
 
     # ── Retrieval ────────────────────────────────────────────────
     default_top_k: int = 10
+    # Over-fetch multiplier: how many raw candidates to pull per requested
+    # result before composite re-ranking. Larger values let high-importance /
+    # recent memories outside the top-k vector neighbours still surface.
+    retrieval_overfetch_multiplier: int = 4
+    # Reciprocal-rank-fusion constant (BM25/FTS + vector). Higher = flatter.
+    rrf_k: int = 60
 
     # ── Scoring weights (must sum to 1.0) ────────────────────────
     score_weight_vector: float = 0.45
@@ -46,6 +52,17 @@ class Settings(BaseSettings):
 
     # ── Authentication ────────────────────────────────────────
     require_auth: bool = False  # Set True in production
+    # When True (and require_auth is on), a request's body/query user_id must
+    # match the authenticated API key's owner — a key for user A cannot read or
+    # mutate user B's memories. This is the tenant-isolation boundary.
+    enforce_tenant_isolation: bool = True
+
+    # ── CORS ──────────────────────────────────────────────────
+    # Comma-separated list of allowed origins. "*" is only honoured with
+    # credentials disabled (a wildcard + credentials is rejected by browsers
+    # and unsafe). Set explicit origins in production to allow credentials.
+    cors_allow_origins: str = "*"
+    cors_allow_credentials: bool = False
 
     # ── Optional OpenAI ──────────────────────────────────────
     openai_api_key: str | None = None
