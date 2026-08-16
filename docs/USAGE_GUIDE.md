@@ -2412,10 +2412,10 @@ The repository includes a fully-working agent demo that creates memories from na
 
 ```bash
 # Interactive mode (chat with Atlas, your AI assistant)
-python agent_demo.py
+python examples/scripts/agent_demo.py
 
 # Auto mode (12 scripted turns, no LLM needed)
-python agent_demo.py --auto
+python examples/scripts/agent_demo.py --auto
 
 # What it demonstrates:
 # - Pattern-based fact extraction from natural language
