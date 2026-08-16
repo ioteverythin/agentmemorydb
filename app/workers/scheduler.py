@@ -108,6 +108,12 @@ class MaintenanceScheduler:
                 interval_seconds=settings.scheduler_prune_interval,
                 enabled=settings.scheduler_enable_prune,
             ),
+            ScheduledJob(
+                name="distill_memories",
+                handler=self._distill_memories,
+                interval_seconds=settings.scheduler_distillation_interval,
+                enabled=settings.scheduler_enable_distillation,
+            ),
         ]
 
     async def start(self) -> None:
@@ -209,27 +215,46 @@ class MaintenanceScheduler:
             return {"users_processed": len(user_ids), "total_merged": total_merged}
 
     async def _archive_stale_memories(self) -> dict[str, Any]:
-        """Archive memories that haven't been accessed in a long time."""
+        """Archive low-retention memories (importance/recency/access-aware)."""
+        from app.services.forgetting_service import ForgettingService
+
+        async with async_session_factory() as session:
+            report = await ForgettingService(session).archive_low_retention()
+            await session.commit()
+            return report
+
+    async def _distill_memories(self) -> dict[str, Any]:
+        """Roll each user's atoms up the pyramid into scenario + persona layers."""
         from sqlalchemy import text
 
-        stale_days = settings.scheduler_stale_threshold_days
-        cutoff = datetime.now(UTC) - timedelta(days=stale_days)
+        from app.services.distillation_service import DistillationService
 
         async with async_session_factory() as session:
             result = await session.execute(
-                text("""
-                    UPDATE memories
-                    SET status = 'archived', updated_at = NOW()
-                    WHERE status = 'active'
-                      AND updated_at < :cutoff
-                      AND importance_score < 0.3
-                    RETURNING id
-                """),
-                {"cutoff": cutoff},
+                text(
+                    "SELECT DISTINCT user_id FROM memories "
+                    "WHERE status = 'active' AND layer = 'atom' LIMIT 100"
+                )
             )
-            archived_ids = [str(row[0]) for row in result.fetchall()]
+            user_ids = [row[0] for row in result.fetchall()]
+
+            svc = DistillationService(session)
+            scenarios = 0
+            personas = 0
+            for uid in user_ids:
+                try:
+                    report = await svc.distill(user_id=uid)
+                    scenarios += len(report.get("scenarios", []))
+                    personas += 1 if report.get("persona_updated") else 0
+                except Exception as exc:
+                    logger.warning("Distillation failed for user %s: %s", uid, exc)
+
             await session.commit()
-            return {"archived_count": len(archived_ids), "stale_threshold_days": stale_days}
+            return {
+                "users_processed": len(user_ids),
+                "scenarios_distilled": scenarios,
+                "personas_updated": personas,
+            }
 
     async def _recompute_recency_scores(self) -> dict[str, Any]:
         """Refresh recency scores for all active memories."""

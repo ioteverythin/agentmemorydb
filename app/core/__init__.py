@@ -111,11 +111,28 @@ class Settings(BaseSettings):
     scheduler_prune_interval: int = 86400
     scheduler_stale_threshold_days: int = 90  # archive memories older than
     scheduler_access_log_retention_days: int = 90  # prune access logs older than
+    scheduler_distillation_interval: int = 21600  # 6h — roll atoms up the pyramid
     scheduler_enable_consolidation: bool = True
     scheduler_enable_archive: bool = True
     scheduler_enable_recency: bool = True
     scheduler_enable_cleanup: bool = True
     scheduler_enable_prune: bool = True
+    scheduler_enable_distillation: bool = True
+
+    # ── Distillation (self-filling pyramid: atom → scenario → persona) ─
+    distillation_min_group_size: int = 2  # atoms per topic before a scenario forms
+    distillation_scenario_char_budget: int = 1200
+    distillation_persona_char_budget: int = 1500
+    distillation_min_scenarios_for_persona: int = 1
+
+    # ── Forgetting (importance/access-aware archival) ────────
+    forgetting_retention_threshold: float = 0.35  # archive below this
+    forget_weight_recency: float = 0.4
+    forget_weight_importance: float = 0.4
+    forget_weight_access: float = 0.2
+    forgetting_min_age_days: int = 14  # never archive memories younger than this
+    forgetting_access_saturation: int = 20
+    forgetting_exempt_layers: str = "persona,scenario"  # distilled layers are kept
 
     # ── Row Level Security ───────────────────────────────────
     enable_rls: bool = False  # Enable after running 004_add_rls migration

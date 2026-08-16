@@ -9,6 +9,7 @@ from app.api.v1 import (
     artifacts,
     bulk,
     consolidation,
+    distillation,
     events,
     graph,
     health,
@@ -47,6 +48,7 @@ api_router.include_router(webhooks.router, prefix="/webhooks", tags=["webhooks"]
 api_router.include_router(bulk.router, prefix="/bulk", tags=["bulk"])
 api_router.include_router(graph.router, prefix="/graph", tags=["graph"])
 api_router.include_router(consolidation.router, prefix="/consolidation", tags=["consolidation"])
+api_router.include_router(distillation.router, prefix="/distillation", tags=["distillation"])
 api_router.include_router(import_export.router, prefix="/data", tags=["data"])
 api_router.include_router(scheduler.router, prefix="/scheduler", tags=["scheduler"])
 api_router.include_router(mcp.router, prefix="/mcp", tags=["mcp"])
