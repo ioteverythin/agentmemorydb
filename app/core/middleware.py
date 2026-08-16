@@ -11,7 +11,7 @@ from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoin
 from starlette.requests import Request
 from starlette.responses import Response
 
-logger = logging.getLogger("agentmemorydb")
+logger = logging.getLogger("engramdb")
 
 # Context variable for request-scoped data
 request_id_ctx: ContextVar[str] = ContextVar("request_id", default="")
@@ -68,7 +68,7 @@ def configure_logging(log_level: str = "INFO") -> None:
     handler.setFormatter(logging.Formatter(fmt))
     handler.addFilter(RequestIDFilter())
 
-    root_logger = logging.getLogger("agentmemorydb")
+    root_logger = logging.getLogger("engramdb")
     root_logger.setLevel(getattr(logging, log_level.upper(), logging.INFO))
     root_logger.addHandler(handler)
     root_logger.propagate = False

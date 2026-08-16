@@ -6,7 +6,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    """Central configuration for AgentMemoryDB."""
+    """Central configuration for EngramDB."""
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     )
 
     # ── Application ──────────────────────────────────────────────
-    app_name: str = "AgentMemoryDB"
+    app_name: str = "EngramDB"
     environment: str = "development"
     log_level: str = "INFO"
     enable_docs: bool = True

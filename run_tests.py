@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-AgentMemoryDB — Test Runner
+EngramDB — Test Runner
 ============================
 
 Run all tests or specific subsets, with optional coverage and HTML reports.
@@ -183,7 +183,7 @@ def build_pytest_args(
             import pytest_cov  # noqa: F401
             args += [
                 "--cov=app",
-                "--cov=agentmemodb",
+                "--cov=engramdb",
                 "--cov-report=term-missing",
                 "--cov-report=html:coverage_html",
             ]
@@ -280,7 +280,7 @@ def build_env() -> dict:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="AgentMemoryDB test runner",
+        description="EngramDB test runner",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=__doc__,
     )
@@ -315,7 +315,7 @@ def main() -> None:
 
     # ── Header ──────────────────────────────────────────────────
     print(_c(BOLD, "\n+----------------------------------------------+"))
-    print(_c(BOLD, "|      AgentMemoryDB  -  Test Runner           |"))
+    print(_c(BOLD, "|      EngramDB  -  Test Runner           |"))
     print(_c(BOLD, "+----------------------------------------------+"))
 
     # ── List mode ───────────────────────────────────────────────

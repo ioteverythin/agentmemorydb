@@ -1,11 +1,11 @@
-"""LangChain integration for AgentMemoryDB.
+"""LangChain integration for EngramDB.
 
 Provides drop-in components for LangChain pipelines:
 
-- **AgentMemoryDBChatHistory** — ``BaseChatMessageHistory`` implementation
+- **EngramDBChatHistory** — ``BaseChatMessageHistory`` implementation
   that persists conversation turns as typed memories.
 
-- **AgentMemoryDBRetriever** — ``BaseRetriever`` that runs hybrid
+- **EngramDBRetriever** — ``BaseRetriever`` that runs hybrid
   semantic search over memories and returns LangChain ``Document`` objects.
 
 - **create_memory_tool** — returns a LangChain ``Tool`` that lets an
@@ -16,23 +16,23 @@ the remote ``HttpClient``.
 
 Quick start::
 
-    import agentmemodb
-    from agentmemodb.integrations.langchain import (
-        AgentMemoryDBChatHistory,
-        AgentMemoryDBRetriever,
+    import engramdb
+    from engramdb.integrations.langchain import (
+        EngramDBChatHistory,
+        EngramDBRetriever,
         create_memory_tool,
     )
 
-    db = agentmemodb.Client()
+    db = engramdb.Client()
 
     # 1. Chat history
-    history = AgentMemoryDBChatHistory(client=db, user_id="user-1", session_id="s1")
+    history = EngramDBChatHistory(client=db, user_id="user-1", session_id="s1")
     history.add_user_message("Hello!")
     history.add_ai_message("Hi there!")
     print(history.messages)
 
     # 2. Retriever (plug into RetrievalQA, ConversationalRetrievalChain, etc.)
-    retriever = AgentMemoryDBRetriever(client=db, user_id="user-1", top_k=5)
+    retriever = EngramDBRetriever(client=db, user_id="user-1", top_k=5)
     docs = retriever.invoke("What language does the user prefer?")
 
     # 3. Tool for agents
@@ -81,17 +81,17 @@ def _require_langchain() -> None:
 # ═══════════════════════════════════════════════════════════════════
 
 
-class AgentMemoryDBChatHistory:
-    """LangChain-compatible chat message history backed by AgentMemoryDB.
+class EngramDBChatHistory:
+    """LangChain-compatible chat message history backed by EngramDB.
 
     Each message is stored as a separate memory with a sequential key
     like ``chat:session-123:msg:0001``.  This preserves ordering while
-    leveraging AgentMemoryDB's versioning, search, and PII masking.
+    leveraging EngramDB's versioning, search, and PII masking.
 
     Parameters
     ----------
     client
-        An ``agentmemodb.Client`` or ``agentmemodb.HttpClient`` instance.
+        An ``engramdb.Client`` or ``engramdb.HttpClient`` instance.
     user_id
         User who owns the conversation.
     session_id
@@ -215,8 +215,8 @@ class AgentMemoryDBChatHistory:
 # ═══════════════════════════════════════════════════════════════════
 
 
-class AgentMemoryDBRetriever:
-    """LangChain-compatible retriever that searches AgentMemoryDB.
+class EngramDBRetriever:
+    """LangChain-compatible retriever that searches EngramDB.
 
     Drop into any LangChain chain that accepts a retriever:
     ``RetrievalQA``, ``ConversationalRetrievalChain``,
@@ -225,7 +225,7 @@ class AgentMemoryDBRetriever:
     Parameters
     ----------
     client
-        An ``agentmemodb.Client`` or ``agentmemodb.HttpClient`` instance.
+        An ``engramdb.Client`` or ``engramdb.HttpClient`` instance.
     user_id
         User whose memories to search.
     top_k
@@ -315,7 +315,7 @@ def create_memory_tool(
     Parameters
     ----------
     client
-        An ``agentmemodb.Client`` or ``agentmemodb.HttpClient``.
+        An ``engramdb.Client`` or ``engramdb.HttpClient``.
     user_id
         User context for memory operations.
     tool_name
@@ -376,10 +376,10 @@ def create_memory_tool(
 # ═══════════════════════════════════════════════════════════════════
 
 
-class AgentMemoryDBConversationMemory:
+class EngramDBConversationMemory:
     """Drop-in memory for LangChain ``ConversationChain`` and similar.
 
-    Stores conversation history in AgentMemoryDB AND uses semantic
+    Stores conversation history in EngramDB AND uses semantic
     search to inject relevant past knowledge into the prompt.
 
     Usage::
@@ -387,7 +387,7 @@ class AgentMemoryDBConversationMemory:
         from langchain.chains import ConversationChain
         from langchain_openai import ChatOpenAI
 
-        memory = AgentMemoryDBConversationMemory(
+        memory = EngramDBConversationMemory(
             client=db,
             user_id="user-1",
             session_id="session-abc",
@@ -416,10 +416,10 @@ class AgentMemoryDBConversationMemory:
         _require_langchain()
         self._client = client
         self._user_id = user_id
-        self._chat_history = AgentMemoryDBChatHistory(
+        self._chat_history = EngramDBChatHistory(
             client=client, user_id=user_id, session_id=session_id
         )
-        self._retriever = AgentMemoryDBRetriever(
+        self._retriever = EngramDBRetriever(
             client=client, user_id=user_id, top_k=top_k
         )
         self.memory_key = memory_key
@@ -485,8 +485,8 @@ class AgentMemoryDBConversationMemory:
 
 
 __all__ = [
-    "AgentMemoryDBChatHistory",
-    "AgentMemoryDBRetriever",
-    "AgentMemoryDBConversationMemory",
+    "EngramDBChatHistory",
+    "EngramDBRetriever",
+    "EngramDBConversationMemory",
     "create_memory_tool",
 ]

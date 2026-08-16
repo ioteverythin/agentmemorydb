@@ -1,4 +1,4 @@
-"""Prometheus metrics for AgentMemoryDB.
+"""Prometheus metrics for EngramDB.
 
 Exposes /metrics endpoint and provides request instrumentation.
 Uses the lightweight `prometheus_client` library.
@@ -32,14 +32,14 @@ if PROMETHEUS_AVAILABLE:
     REGISTRY = CollectorRegistry()
 
     REQUEST_COUNT = Counter(
-        "agentmemorydb_http_requests_total",
+        "engramdb_http_requests_total",
         "Total HTTP requests",
         ["method", "path", "status_code"],
         registry=REGISTRY,
     )
 
     REQUEST_LATENCY = Histogram(
-        "agentmemorydb_http_request_duration_seconds",
+        "engramdb_http_request_duration_seconds",
         "HTTP request latency in seconds",
         ["method", "path"],
         buckets=[0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0],
@@ -47,27 +47,27 @@ if PROMETHEUS_AVAILABLE:
     )
 
     MEMORY_UPSERTS = Counter(
-        "agentmemorydb_memory_upserts_total",
+        "engramdb_memory_upserts_total",
         "Total memory upsert operations",
         ["action"],  # created | updated | skipped
         registry=REGISTRY,
     )
 
     MEMORY_SEARCHES = Counter(
-        "agentmemorydb_memory_searches_total",
+        "engramdb_memory_searches_total",
         "Total memory search operations",
         ["strategy"],  # hybrid_vector | metadata_only
         registry=REGISTRY,
     )
 
     ACTIVE_MEMORIES = Gauge(
-        "agentmemorydb_active_memories",
+        "engramdb_active_memories",
         "Current number of active memories (updated periodically)",
         registry=REGISTRY,
     )
 
     WEBHOOK_DELIVERIES = Counter(
-        "agentmemorydb_webhook_deliveries_total",
+        "engramdb_webhook_deliveries_total",
         "Total webhook delivery attempts",
         ["event_type", "success"],
         registry=REGISTRY,

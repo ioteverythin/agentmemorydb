@@ -1,15 +1,15 @@
-"""LangGraph adapter stub — shows how to plug AgentMemoryDB into LangGraph.
+"""LangGraph adapter stub — shows how to plug EngramDB into LangGraph.
 
 This is a placeholder that demonstrates the interface.
 A production implementation would subclass LangGraph's ``BaseStore``
-(or ``BaseCheckpointSaver``) and delegate to AgentMemoryDB's HTTP API
+(or ``BaseCheckpointSaver``) and delegate to EngramDB's HTTP API
 or service layer.
 
 Usage concept (LangGraph side):
 
-    from agentmemorydb.adapters.langgraph_store import AgentMemoryDBStore
+    from engramdb.adapters.langgraph_store import EngramDBStore
 
-    store = AgentMemoryDBStore(base_url="http://localhost:8100")
+    store = EngramDBStore(base_url="http://localhost:8100")
     graph = StateGraph(..., store=store)
 
 References:
@@ -24,8 +24,8 @@ from typing import Any
 import httpx
 
 
-class AgentMemoryDBStore:
-    """Adapter that wraps AgentMemoryDB's REST API for use as a LangGraph store.
+class EngramDBStore:
+    """Adapter that wraps EngramDB's REST API for use as a LangGraph store.
 
     This is a **stub** — it sketches the interface but is not yet a full
     BaseStore implementation.  It can be used today to read/write memories
@@ -54,7 +54,7 @@ class AgentMemoryDBStore:
         scope: str = "user",
         **kwargs: Any,
     ) -> dict:
-        """Upsert a memory via the AgentMemoryDB API."""
+        """Upsert a memory via the EngramDB API."""
         payload = {
             "user_id": self._user_id,
             "project_id": self._project_id,
@@ -78,7 +78,7 @@ class AgentMemoryDBStore:
         memory_types: list[str] | None = None,
         **kwargs: Any,
     ) -> list[dict]:
-        """Search memories via the AgentMemoryDB API."""
+        """Search memories via the EngramDB API."""
         payload: dict[str, Any] = {
             "user_id": self._user_id,
             "query_text": query,
@@ -105,7 +105,7 @@ class AgentMemoryDBStore:
     async def close(self) -> None:
         await self._client.aclose()
 
-    async def __aenter__(self) -> AgentMemoryDBStore:
+    async def __aenter__(self) -> EngramDBStore:
         return self
 
     async def __aexit__(self, *args: Any) -> None:

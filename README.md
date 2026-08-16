@@ -1,22 +1,22 @@
 <p align="center">
-  <strong>AgentMemoryDB</strong><br>
+  <strong>EngramDB</strong><br>
   <em>SQL-native, auditable, event-sourced memory + state backend for agentic AI</em>
 </p>
 
 <p align="center">
-  <a href="https://github.com/agentmemodb/agentmemodb/actions"><img src="https://img.shields.io/github/actions/workflow/status/agentmemodb/agentmemodb/ci.yml?branch=main&label=CI" alt="CI"></a>
-  <a href="https://pypi.org/project/agentmemodb/"><img src="https://img.shields.io/pypi/v/agentmemodb?color=blue" alt="PyPI"></a>
+  <a href="https://github.com/engramdb/engramdb/actions"><img src="https://img.shields.io/github/actions/workflow/status/engramdb/engramdb/ci.yml?branch=main&label=CI" alt="CI"></a>
+  <a href="https://pypi.org/project/engramdb/"><img src="https://img.shields.io/pypi/v/engramdb?color=blue" alt="PyPI"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-green" alt="License"></a>
   <a href="https://www.python.org/"><img src="https://img.shields.io/badge/python-3.11%2B-blue" alt="Python"></a>
 </p>
 
 ---
 
-## Why AgentMemoryDB?
+## Why EngramDB?
 
-Most agentic frameworks treat memory as an afterthought — a JSON blob, a vector-only store, or a black-box service.  **AgentMemoryDB** is different:
+Most agentic frameworks treat memory as an afterthought — a JSON blob, a vector-only store, or a black-box service.  **EngramDB** is different:
 
-| Feature | AgentMemoryDB | Typical alternatives |
+| Feature | EngramDB | Typical alternatives |
 |---------|---------------|----------------------|
 | **Storage** | PostgreSQL — one DB you already know | Redis, Pinecone, custom |
 | **Memory pyramid** | First-class `raw`→`atom`→`scenario`→`persona` layers in SQL | Flat records or files on disk |
@@ -102,8 +102,8 @@ Every memory is identified by `(user_id, memory_key)`.  Updates create a
 ### 1. Clone & Start
 
 ```bash
-git clone https://github.com/agentmemodb/agentmemodb.git
-cd agentmemodb
+git clone https://github.com/engramdb/engramdb.git
+cd engramdb
 cp .env.example .env          # review & tweak
 docker compose up -d           # Postgres + API
 ```
@@ -306,7 +306,7 @@ All settings are driven by environment variables (or `.env`):
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `APP_NAME` | `AgentMemoryDB` | Application name |
+| `APP_NAME` | `EngramDB` | Application name |
 | `DATABASE_URL` | `postgresql+asyncpg://…` | Async Postgres URL |
 | `EMBEDDING_PROVIDER` | `dummy` | `dummy`, `openai`, `cohere`, `sentence-transformers`, `ollama` |
 | `EMBEDDING_DIMENSION` | `1536` | Vector dimension |
@@ -363,9 +363,9 @@ python examples/scripts/demo_task_flow.py
 A lightweight adapter is included at `app/adapters/langgraph_store.py`:
 
 ```python
-from app.adapters.langgraph_store import AgentMemoryDBStore
+from app.adapters.langgraph_store import EngramDBStore
 
-store = AgentMemoryDBStore(base_url="http://localhost:8100/api/v1")
+store = EngramDBStore(base_url="http://localhost:8100/api/v1")
 await store.put(user_id, "pref:color", "User likes blue.")
 results = await store.search(user_id, "What colour?", top_k=3)
 ```
@@ -373,9 +373,9 @@ results = await store.search(user_id, "What colour?", top_k=3)
 ### Python SDK
 
 ```python
-from app.sdk import AgentMemoryDBClient
+from app.sdk import EngramDBClient
 
-async with AgentMemoryDBClient(
+async with EngramDBClient(
     base_url="http://localhost:8100",
     api_key="amdb_...",
 ) as client:
@@ -405,26 +405,26 @@ async with AgentMemoryDBClient(
 
 ```bash
 # Health check
-agentmemodb health
+engramdb health
 
 # Memory statistics
-agentmemodb stats
+engramdb stats
 
 # Export/import
-agentmemodb export --user-id <UUID> -o memories.json
-agentmemodb import memories.json
+engramdb export --user-id <UUID> -o memories.json
+engramdb import memories.json
 
 # Maintenance
-agentmemodb archive-stale --days 90
-agentmemodb consolidate
-agentmemodb recompute-recency
+engramdb archive-stale --days 90
+engramdb consolidate
+engramdb recompute-recency
 ```
 
 ---
 
 ## MCP Server (Model Context Protocol)
 
-AgentMemoryDB includes a built-in MCP server that lets AI agents (Claude, Cursor, custom agents) interact with memory through the standard Model Context Protocol:
+EngramDB includes a built-in MCP server that lets AI agents (Claude, Cursor, custom agents) interact with memory through the standard Model Context Protocol:
 
 ```json
 {
@@ -479,9 +479,9 @@ Features: memory search, score visualization, real-time WebSocket event feed, ty
 ## TypeScript SDK
 
 ```typescript
-import { AgentMemoryDB } from '@agentmemorydb/sdk';
+import { EngramDB } from '@engramdb/sdk';
 
-const db = new AgentMemoryDB({
+const db = new EngramDB({
   baseUrl: 'http://localhost:8000',
   apiKey: 'your-api-key',
 });
@@ -507,7 +507,7 @@ See [sdks/typescript/README.md](sdks/typescript/README.md) for full docs.
 
 ## Row Level Security (Multi-Tenant Isolation)
 
-AgentMemoryDB supports PostgreSQL Row Level Security for database-level tenant isolation:
+EngramDB supports PostgreSQL Row Level Security for database-level tenant isolation:
 
 ```bash
 # Run the RLS migration
@@ -517,7 +517,7 @@ alembic upgrade 004_add_rls
 ENABLE_RLS=true
 ```
 
-Three roles: `agentmemodb_anon` (read-only), `agentmemodb_user` (CRUD on own data), `agentmemodb_admin` (full access). Tenant context is set via `set_tenant_context(user_id)` before queries.
+Three roles: `engramdb_anon` (read-only), `engramdb_user` (CRUD on own data), `engramdb_admin` (full access). Tenant context is set via `set_tenant_context(user_id)` before queries.
 
 ---
 
@@ -540,7 +540,7 @@ Configure via `SCHEDULER_*` environment variables. All jobs are individually tog
 ## Project Structure
 
 ```
-agentmemodb/
+engramdb/
 ├── app/
 │   ├── api/v1/           # FastAPI routes (20 modules)
 │   ├── core/             # Settings, errors, auth, middleware, metrics
@@ -558,7 +558,7 @@ agentmemodb/
 │   ├── sdk/              # Typed async Python client
 │   └── cli.py            # Click CLI management tool
 ├── sdks/
-│   └── typescript/       # @agentmemorydb/sdk TypeScript client
+│   └── typescript/       # @engramdb/sdk TypeScript client
 ├── alembic/              # Database migrations
 ├── migrations/           # Feature migrations (RLS, etc.)
 ├── tests/
@@ -626,10 +626,10 @@ If you discover a vulnerability, please follow the process in
 
 ## License
 
-AgentMemoryDB is released under the [Apache License 2.0](LICENSE).
+EngramDB is released under the [Apache License 2.0](LICENSE).
 
 ```
-Copyright 2024 AgentMemoryDB Contributors
+Copyright 2024 EngramDB Contributors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.

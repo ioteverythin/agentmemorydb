@@ -1,6 +1,6 @@
-# Contributing to AgentMemoryDB
+# Contributing to EngramDB
 
-Thank you for your interest in contributing to AgentMemoryDB! This document provides guidelines and information for contributors.
+Thank you for your interest in contributing to EngramDB! This document provides guidelines and information for contributors.
 
 ## Getting Started
 
@@ -23,8 +23,8 @@ Thank you for your interest in contributing to AgentMemoryDB! This document prov
 
 ```bash
 # Clone and enter the project
-git clone https://github.com/YOUR_USERNAME/agentmemorydb.git
-cd agentmemorydb
+git clone https://github.com/YOUR_USERNAME/engramdb.git
+cd engramdb
 
 # Start Postgres with pgvector
 docker-compose up -d db

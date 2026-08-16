@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""AgentMemoryDB × LangChain × LangGraph — Full Integration Demo.
+"""EngramDB × LangChain × LangGraph — Full Integration Demo.
 
-Demonstrates how to integrate AgentMemoryDB with both LangChain and
+Demonstrates how to integrate EngramDB with both LangChain and
 LangGraph using the embedded SQLite client (no server needed).
 
 Sections:
@@ -33,7 +33,7 @@ from typing import Any, TypedDict
 
 # ── Parse args first ────────────────────────────────────────────
 
-parser = argparse.ArgumentParser(description="AgentMemoryDB LangChain/LangGraph Demo")
+parser = argparse.ArgumentParser(description="EngramDB LangChain/LangGraph Demo")
 parser.add_argument(
     "--provider",
     choices=["huggingface", "openai", "dummy"],
@@ -69,23 +69,23 @@ def build_embedding(provider: str, model: str | None = None):
         return emb
 
     elif provider == "openai":
-        from agentmemodb import OpenAIEmbedding
+        from engramdb import OpenAIEmbedding
         api_key = os.getenv("OPENAI_API_KEY")
         if not api_key:
             print("  ⚠ OPENAI_API_KEY not set, falling back to dummy")
-            from agentmemodb import DummyEmbedding
+            from engramdb import DummyEmbedding
             return DummyEmbedding()
         return OpenAIEmbedding(api_key=api_key, model=model or "text-embedding-3-small")
 
     else:
-        from agentmemodb import DummyEmbedding
+        from engramdb import DummyEmbedding
         return DummyEmbedding()
 
 
 # ── Banner ──────────────────────────────────────────────────────
 
 print("=" * 70)
-print("  AgentMemoryDB × LangChain × LangGraph Integration Demo")
+print("  EngramDB × LangChain × LangGraph Integration Demo")
 print("=" * 70)
 print(f"  Provider: {args.provider}")
 print()
@@ -94,17 +94,17 @@ embedding_fn = build_embedding(args.provider, args.model)
 
 # ── Import everything ───────────────────────────────────────────
 
-import agentmemodb
-from agentmemodb import Client, MemoryManager
-from agentmemodb.integrations.langchain import (
-    AgentMemoryDBChatHistory,
-    AgentMemoryDBRetriever,
-    AgentMemoryDBConversationMemory,
+import engramdb
+from engramdb import Client, MemoryManager
+from engramdb.integrations.langchain import (
+    EngramDBChatHistory,
+    EngramDBRetriever,
+    EngramDBConversationMemory,
     create_memory_tool,
 )
-from agentmemodb.integrations.langgraph import (
-    AgentMemoryDBStore,
-    AgentMemoryDBSaver,
+from engramdb.integrations.langgraph import (
+    EngramDBStore,
+    EngramDBSaver,
     create_memory_node,
     create_save_memory_node,
 )
@@ -136,7 +136,7 @@ def check(label: str, condition: bool, detail: str = ""):
 section(1, "LangChain — ChatMessageHistory")
 
 db1 = Client(path=":memory:", embedding_fn=embedding_fn)
-history = AgentMemoryDBChatHistory(client=db1, user_id="user-1", session_id="session-001")
+history = EngramDBChatHistory(client=db1, user_id="user-1", session_id="session-001")
 
 history.add_user_message("Hi! I'm working on a Python backend project.")
 history.add_ai_message("That's great! Python is excellent for backends. What framework?")
@@ -173,10 +173,10 @@ db2.upsert("user-1", "pref:language", "User strongly prefers Python for all back
 db2.upsert("user-1", "pref:framework", "User uses FastAPI for building async APIs")
 db2.upsert("user-1", "pref:database", "User prefers PostgreSQL with pgvector for vector search")
 db2.upsert("user-1", "pref:editor", "User uses VS Code with Copilot extension")
-db2.upsert("user-1", "fact:project", "Currently building an AI memory system called AgentMemoryDB")
+db2.upsert("user-1", "fact:project", "Currently building an AI memory system called EngramDB")
 db2.upsert("user-1", "pref:testing", "User writes pytest tests with 100% coverage goal")
 
-retriever = AgentMemoryDBRetriever(
+retriever = EngramDBRetriever(
     client=db2, user_id="user-1", top_k=3, score_threshold=0.0
 )
 
@@ -258,7 +258,7 @@ db4.upsert("user-2", "pref:lang", "User prefers TypeScript for frontend work")
 db4.upsert("user-2", "pref:framework", "User uses React with Next.js")
 db4.upsert("user-2", "skill:python", "User is also proficient in Python")
 
-memory = AgentMemoryDBConversationMemory(
+memory = EngramDBConversationMemory(
     client=db4,
     user_id="user-2",
     session_id="conv-001",
@@ -299,12 +299,12 @@ db4.close()
 section(5, "LangGraph — Store (Long-term Agent Memory)")
 
 db5 = Client(path=":memory:", embedding_fn=embedding_fn)
-store = AgentMemoryDBStore(client=db5, user_id="agent-1", namespace="knowledge")
+store = EngramDBStore(client=db5, user_id="agent-1", namespace="knowledge")
 
 # Store memories
 store.put("user:name", "The user's name is Josh")
 store.put("user:role", "Josh is a full-stack developer")
-store.put("project:current", "Working on AgentMemoryDB — an AI memory system")
+store.put("project:current", "Working on EngramDB — an AI memory system")
 store.put("pref:tools", "Prefers Python, FastAPI, PostgreSQL, React")
 store.put("pref:ide", "Uses VS Code with GitHub Copilot")
 
@@ -348,7 +348,7 @@ db5.close()
 section(6, "LangGraph — Saver (Graph State Checkpoints)")
 
 db6 = Client(path=":memory:", embedding_fn=embedding_fn)
-saver = AgentMemoryDBSaver(client=db6, user_id="system")
+saver = EngramDBSaver(client=db6, user_id="system")
 
 config = {"configurable": {"thread_id": "thread-abc"}}
 
@@ -397,7 +397,7 @@ db6.close()
 section(7, "LangGraph — Memory Nodes (Recall + Save)")
 
 db7 = Client(path=":memory:", embedding_fn=embedding_fn)
-store7 = AgentMemoryDBStore(client=db7, user_id="user-1")
+store7 = EngramDBStore(client=db7, user_id="user-1")
 
 # Pre-seed knowledge
 store7.put("pref:lang", "User prefers Python for backend development")
@@ -441,10 +441,10 @@ try:
         output: str
 
     db8 = Client(path=":memory:", embedding_fn=embedding_fn)
-    store8 = AgentMemoryDBStore(client=db8, user_id="user-1")
+    store8 = EngramDBStore(client=db8, user_id="user-1")
 
     # Seed knowledge
-    store8.put("fact:product", "AgentMemoryDB is an AI memory system with hybrid search")
+    store8.put("fact:product", "EngramDB is an AI memory system with hybrid search")
     store8.put("fact:features", "It supports versioning, PII masking, and graph links")
     store8.put("fact:stack", "Built with Python, FastAPI, PostgreSQL, pgvector")
 
@@ -486,7 +486,7 @@ try:
 
     # Run the graph
     result = app.invoke({
-        "input": "Tell me about AgentMemoryDB features",
+        "input": "Tell me about EngramDB features",
         "context": "",
         "output": "",
     })
@@ -587,7 +587,7 @@ try:
     # Seed long-term knowledge
     mgr10.long_term.remember("pref:lang", "User prefers Python", importance=0.9)
     mgr10.long_term.remember("pref:db", "User uses PostgreSQL + pgvector", importance=0.8)
-    mgr10.long_term.remember("project:current", "Building AgentMemoryDB", importance=0.95)
+    mgr10.long_term.remember("project:current", "Building EngramDB", importance=0.95)
 
     # Node: load context (conversation + knowledge)
     def load_context(state: FullAgentState) -> dict:

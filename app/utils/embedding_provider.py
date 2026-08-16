@@ -51,7 +51,7 @@ class DummyEmbeddingProvider(BaseEmbeddingProvider):
 class OpenAIEmbeddingProvider(BaseEmbeddingProvider):
     """Placeholder for OpenAI embedding integration.
 
-    Requires ``openai`` extra: ``pip install agentmemorydb[openai]``
+    Requires ``openai`` extra: ``pip install engramdb[openai]``
     """
 
     def __init__(
@@ -74,9 +74,7 @@ class OpenAIEmbeddingProvider(BaseEmbeddingProvider):
         try:
             from openai import AsyncOpenAI
         except ImportError as exc:
-            raise ImportError(
-                "Install the openai extra: pip install agentmemorydb[openai]"
-            ) from exc
+            raise ImportError("Install the openai extra: pip install engramdb[openai]") from exc
 
         client = AsyncOpenAI(api_key=self._api_key)
         response = await client.embeddings.create(input=texts, model=self._model)

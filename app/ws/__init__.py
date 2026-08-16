@@ -1,4 +1,4 @@
-"""WebSocket real-time event streaming for AgentMemoryDB.
+"""WebSocket real-time event streaming for EngramDB.
 
 Inspired by InsForge's real-time pub/sub via PostgreSQL triggers + WebSockets.
 Provides live streaming of memory lifecycle events to connected clients.

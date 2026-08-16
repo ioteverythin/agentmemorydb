@@ -1,4 +1,4 @@
-"""Scheduled maintenance worker for AgentMemoryDB.
+"""Scheduled maintenance worker for EngramDB.
 
 Inspired by InsForge's scheduled tasks feature. Runs periodic
 maintenance jobs on a configurable cron schedule:
@@ -21,7 +21,7 @@ from typing import Any
 from app.core.config import settings
 from app.db import async_session_factory
 
-logger = logging.getLogger("agentmemodb.scheduler")
+logger = logging.getLogger("engramdb.scheduler")
 
 
 class ScheduledJob:

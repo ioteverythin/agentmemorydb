@@ -1,4 +1,4 @@
-"""MCP tool definitions for AgentMemoryDB.
+"""MCP tool definitions for EngramDB.
 
 Each tool is exposed to AI agents via the Model Context Protocol.
 Tools are designed to be *intent-based* — agents express what they

@@ -22,7 +22,7 @@
 
 ## Event → Observation → Memory Pipeline
 
-This is AgentMemoryDB's core intelligence pipeline. Raw agent events are automatically processed into structured observations and then into searchable memories.
+This is EngramDB's core intelligence pipeline. Raw agent events are automatically processed into structured observations and then into searchable memories.
 
 ```
 User Message / Tool Result
@@ -40,10 +40,10 @@ A run groups all events from one agent execution session.
 
 ```python
 import asyncio
-from app.sdk.client import AgentMemoryDBClient
+from app.sdk.client import EngramDBClient
 
 async def run_pipeline():
-    async with AgentMemoryDBClient("http://localhost:8100") as client:
+    async with EngramDBClient("http://localhost:8100") as client:
         # Create user + run
         user = await client.create_user("Alice")
         user_id = user["id"]
@@ -113,16 +113,16 @@ Observations are the structured layer between raw events and stored memories:
 
 ## Memory Knowledge Graph
 
-AgentMemoryDB stores memories as nodes in a typed knowledge graph. Links between memories express relationships like "supports", "contradicts", "derived_from", etc.
+EngramDB stores memories as nodes in a typed knowledge graph. Links between memories express relationships like "supports", "contradicts", "derived_from", etc.
 
 ### Creating Links
 
 ```python
 import asyncio
-from app.sdk.client import AgentMemoryDBClient
+from app.sdk.client import EngramDBClient
 
 async def build_graph():
-    async with AgentMemoryDBClient("http://localhost:8100") as client:
+    async with EngramDBClient("http://localhost:8100") as client:
         user_id = "..."  # your user ID
 
         # Create base memories
@@ -550,13 +550,13 @@ Failed webhook deliveries are automatically retried with exponential backoff (up
 
 ## PII Data Masking
 
-AgentMemoryDB automatically detects and masks personally identifiable information before storing memories.
+EngramDB automatically detects and masks personally identifiable information before storing memories.
 
 ### Enabling Masking
 
 **Per-client (embedded):**
 ```python
-db = agentmemodb.Client(mask_pii=True)
+db = engramdb.Client(mask_pii=True)
 ```
 
 **Server-side:** Set `MASKING_ENABLED=true` in environment:
@@ -663,7 +663,7 @@ curl http://localhost:8100/api/v1/memories \
 
 ```python
 # In the async SDK
-async with AgentMemoryDBClient(
+async with EngramDBClient(
     base_url="http://localhost:8100",
     api_key="amdb_abc123...",
 ) as client:
@@ -793,7 +793,7 @@ curl -s -X POST http://localhost:8100/api/v1/scheduler/run/prune_access_logs
 
 ## Row-Level Security
 
-AgentMemoryDB implements row-level security (RLS) at the service layer:
+EngramDB implements row-level security (RLS) at the service layer:
 
 - **User isolation**: All queries are automatically scoped to `user_id` — a user can never read another user's memories
 - **Project scoping**: When `project_id` is provided, memories are further filtered by project membership
@@ -824,7 +824,7 @@ The CLI provides operational commands for DBAs, devs, and CI/CD pipelines.
 
 ```bash
 # Inside Docker container
-docker exec agentmemodb-app-1 python -m app.cli --help
+docker exec engramdb-app-1 python -m app.cli --help
 
 # If running locally
 python -m app.cli --help
@@ -897,22 +897,22 @@ curl http://localhost:8100/metrics
 
 ```
 # Memory counts by type and status
-agentmemorydb_memories_total{memory_type="semantic",status="active"} 247
+engramdb_memories_total{memory_type="semantic",status="active"} 247
 
 # Search performance
-agentmemorydb_search_duration_seconds_bucket{le="0.1"} 1453
-agentmemorydb_search_duration_seconds_bucket{le="0.5"} 1498
-agentmemorydb_search_duration_seconds_p99 0.087
+engramdb_search_duration_seconds_bucket{le="0.1"} 1453
+engramdb_search_duration_seconds_bucket{le="0.5"} 1498
+engramdb_search_duration_seconds_p99 0.087
 
 # Upsert performance  
-agentmemorydb_upsert_duration_seconds_p99 0.043
+engramdb_upsert_duration_seconds_p99 0.043
 
 # Webhook deliveries
-agentmemorydb_webhook_deliveries_total{status="success"} 124
-agentmemorydb_webhook_deliveries_total{status="failed"} 2
+engramdb_webhook_deliveries_total{status="success"} 124
+engramdb_webhook_deliveries_total{status="failed"} 2
 
 # Active users
-agentmemorydb_active_users 38
+engramdb_active_users 38
 
 # HTTP request rates
 http_requests_total{method="POST",path="/api/v1/memories/search",status="200"} 8921

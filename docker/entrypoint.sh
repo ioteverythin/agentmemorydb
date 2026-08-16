@@ -2,15 +2,15 @@
 set -e
 
 # ═══════════════════════════════════════════════════════════
-# AgentMemoryDB — Docker Entrypoint
+# EngramDB — Docker Entrypoint
 # ═══════════════════════════════════════════════════════════
 # Usage:
-#   docker run agentmemorydb serve        → run API server (default)
-#   docker run agentmemorydb migrate      → run migrations only
-#   docker run agentmemorydb shell        → Python REPL
-#   docker run agentmemorydb <any-cmd>    → pass through
+#   docker run engramdb serve        → run API server (default)
+#   docker run engramdb migrate      → run migrations only
+#   docker run engramdb shell        → Python REPL
+#   docker run engramdb <any-cmd>    → pass through
 
-echo "🧠 AgentMemoryDB v0.1.0"
+echo "🧠 EngramDB v0.1.0"
 echo "───────────────────────────"
 
 case "${1}" in

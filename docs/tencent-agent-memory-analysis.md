@@ -1,4 +1,4 @@
-# TencentDB Agent Memory — Flaw Analysis & How AgentMemoryDB Improves On It
+# TencentDB Agent Memory — Flaw Analysis & How EngramDB Improves On It
 
 This document catalogues the concrete flaws we found in
 [TencentCloud/TencentDB-Agent-Memory](https://github.com/TencentCloud/TencentDB-Agent-Memory)
@@ -116,9 +116,9 @@ repository layer (#5).
 
 ---
 
-## 4. How AgentMemoryDB is better
+## 4. How EngramDB is better
 
-AgentMemoryDB was already SQL-native (PostgreSQL + pgvector), versioned,
+EngramDB was already SQL-native (PostgreSQL + pgvector), versioned,
 auditable, and API-key authenticated. In response to this analysis we adopted
 Tencent's best ideas **without** their flaws, and fixed a set of our own latent
 bugs. Every item below ships with tests (357 passing: 346 unit + 11 integration
@@ -146,7 +146,7 @@ against real PostgreSQL + pgvector).
 
 ### 4.3 Correctness fixes to our own codebase
 
-These are latent bugs the analysis surfaced in AgentMemoryDB itself:
+These are latent bugs the analysis surfaced in EngramDB itself:
 
 1. **Scheduler now actually runs.** `main.py` launched `start()`/`stop()`
    without `await` on an infinite-loop coroutine (zero jobs ran) and built a

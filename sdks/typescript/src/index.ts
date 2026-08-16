@@ -1,14 +1,14 @@
 /**
- * @agentmemorydb/sdk — TypeScript client for AgentMemoryDB
+ * @engramdb/sdk — TypeScript client for EngramDB
  *
  * Inspired by InsForge's multi-language SDK approach.
- * Provides a typed, ergonomic client for all AgentMemoryDB operations.
+ * Provides a typed, ergonomic client for all EngramDB operations.
  *
  * @example
  * ```ts
- * import { AgentMemoryDB } from '@agentmemorydb/sdk';
+ * import { EngramDB } from '@engramdb/sdk';
  *
- * const db = new AgentMemoryDB({
+ * const db = new EngramDB({
  *   baseUrl: 'http://localhost:8000',
  *   apiKey: 'your-api-key',
  * });
@@ -29,9 +29,9 @@
  * ```
  */
 
-export { AgentMemoryDB } from './client';
+export { EngramDB } from './client';
 export type {
-  AgentMemoryDBConfig,
+  EngramDBConfig,
   Memory,
   MemoryUpsertInput,
   MemorySearchInput,

@@ -1,7 +1,7 @@
 """MCP transport layer — SSE (Server-Sent Events) and stdio transports.
 
 Provides the communication layer between MCP clients and the
-AgentMemoryDB MCP server. Supports:
+EngramDB MCP server. Supports:
 - SSE transport for web-based agents (HTTP endpoint)
 - Stdio transport for local agent processes (CLI pipe)
 """

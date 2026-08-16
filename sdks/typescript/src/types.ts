@@ -1,9 +1,9 @@
-/** Type definitions for the AgentMemoryDB TypeScript SDK. */
+/** Type definitions for the EngramDB TypeScript SDK. */
 
 // ── Configuration ───────────────────────────────────────────────
 
-export interface AgentMemoryDBConfig {
-  /** Base URL of the AgentMemoryDB server */
+export interface EngramDBConfig {
+  /** Base URL of the EngramDB server */
   baseUrl: string;
   /** API key for authentication */
   apiKey?: string;

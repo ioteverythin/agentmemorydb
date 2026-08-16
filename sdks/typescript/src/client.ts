@@ -1,13 +1,13 @@
 /**
- * AgentMemoryDB TypeScript Client
+ * EngramDB TypeScript Client
  *
- * A fully-typed HTTP client for all AgentMemoryDB API operations.
+ * A fully-typed HTTP client for all EngramDB API operations.
  * Inspired by InsForge's @insforge/sdk architecture with namespaced
  * sub-clients for each domain (memories, events, graph, etc.).
  */
 
 import type {
-  AgentMemoryDBConfig,
+  EngramDBConfig,
   Memory,
   MemoryUpsertInput,
   MemorySearchInput,
@@ -30,7 +30,7 @@ class HttpClient {
   private headers: Record<string, string>;
   private timeout: number;
 
-  constructor(config: AgentMemoryDBConfig) {
+  constructor(config: EngramDBConfig) {
     this.baseUrl = config.baseUrl.replace(/\/$/, '');
     this.timeout = config.timeout ?? 30000;
     this.headers = {
@@ -57,7 +57,7 @@ class HttpClient {
 
       if (!response.ok) {
         const error = await response.json().catch(() => ({ detail: response.statusText }));
-        throw new AgentMemoryDBError(
+        throw new EngramDBError(
           `${method} ${path} failed: ${response.status}`,
           response.status,
           error,
@@ -79,14 +79,14 @@ class HttpClient {
 
 // ── Error Class ─────────────────────────────────────────────────
 
-export class AgentMemoryDBError extends Error {
+export class EngramDBError extends Error {
   constructor(
     message: string,
     public statusCode: number,
     public detail: unknown,
   ) {
     super(message);
-    this.name = 'AgentMemoryDBError';
+    this.name = 'EngramDBError';
   }
 }
 
@@ -250,7 +250,7 @@ class DataClient {
 
 // ── Main Client ─────────────────────────────────────────────────
 
-export class AgentMemoryDB {
+export class EngramDB {
   private http: HttpClient;
 
   /** Memory operations (upsert, search, get, versions). */
@@ -266,7 +266,7 @@ export class AgentMemoryDB {
   /** Import/export operations. */
   public data: DataClient;
 
-  constructor(config: AgentMemoryDBConfig) {
+  constructor(config: EngramDBConfig) {
     this.http = new HttpClient(config);
     this.memories = new MemoriesClient(this.http);
     this.events = new EventsClient(this.http);

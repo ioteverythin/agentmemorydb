@@ -1008,11 +1008,11 @@ curl http://localhost:8100/metrics
 Key metrics exported:
 | Metric | Description |
 |---|---|
-| `agentmemorydb_memories_total` | Total memories by type and status |
-| `agentmemorydb_search_duration_seconds` | Histogram of search latencies |
-| `agentmemorydb_upsert_duration_seconds` | Histogram of upsert latencies |
-| `agentmemorydb_active_users` | Count of users with active memories |
-| `agentmemorydb_webhook_deliveries_total` | Webhook deliveries by status |
+| `engramdb_memories_total` | Total memories by type and status |
+| `engramdb_search_duration_seconds` | Histogram of search latencies |
+| `engramdb_upsert_duration_seconds` | Histogram of upsert latencies |
+| `engramdb_active_users` | Count of users with active memories |
+| `engramdb_webhook_deliveries_total` | Webhook deliveries by status |
 | `http_requests_total` | HTTP request counts by method and path |
 
 Plug into Grafana with a Prometheus datasource at `http://localhost:8100/metrics`.

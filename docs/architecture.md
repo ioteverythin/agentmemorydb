@@ -1,4 +1,4 @@
-# AgentMemoryDB — Architecture
+# EngramDB — Architecture
 
 > SQL-native, auditable, event-sourced memory + state backend for agentic AI.
 
@@ -201,12 +201,12 @@ When `prometheus_client` is installed and `ENABLE_METRICS=true`:
 
 | Metric | Type | Description |
 |--------|------|-------------|
-| `agentmemodb_request_count` | Counter | HTTP requests by method/path/status |
-| `agentmemodb_request_latency_seconds` | Histogram | Request duration distribution |
-| `agentmemodb_memory_upserts_total` | Counter | Memory upserts by action |
-| `agentmemodb_memory_searches_total` | Counter | Searches by strategy |
-| `agentmemodb_active_memories` | Gauge | Currently active memories |
-| `agentmemodb_webhook_deliveries_total` | Counter | Webhook deliveries by status |
+| `engramdb_request_count` | Counter | HTTP requests by method/path/status |
+| `engramdb_request_latency_seconds` | Histogram | Request duration distribution |
+| `engramdb_memory_upserts_total` | Counter | Memory upserts by action |
+| `engramdb_memory_searches_total` | Counter | Searches by strategy |
+| `engramdb_active_memories` | Gauge | Currently active memories |
+| `engramdb_webhook_deliveries_total` | Counter | Webhook deliveries by status |
 
 ### Structured Logging
 
@@ -263,7 +263,7 @@ See `.env.example` for the full list.
 ## Directory Layout
 
 ```
-agentmemodb/
+engramdb/
 ├── app/
 │   ├── api/v1/           # FastAPI routes (17 modules)
 │   ├── core/             # Settings, errors, auth, middleware, metrics

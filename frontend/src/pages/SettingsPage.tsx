@@ -19,7 +19,7 @@ export default function SettingsPage() {
             onChange={(e) => setBaseUrl(e.target.value)}
           />
           <p className="text-[10px] text-gh-dim mt-1">
-            The base URL of your AgentMemoryDB instance. Settings are persisted in localStorage.
+            The base URL of your EngramDB instance. Settings are persisted in localStorage.
           </p>
         </div>
 
@@ -59,7 +59,7 @@ export default function SettingsPage() {
         <h2 className="text-xs uppercase tracking-wider text-gh-dim font-semibold mb-2">About</h2>
         <div className="text-xs text-gh-muted space-y-1">
           <p>
-            AgentMemoryDB Explorer is a React-based UI for managing and visualizing agent memories.
+            EngramDB Explorer is a React-based UI for managing and visualizing agent memories.
           </p>
           <p>Built with Vite · React · TypeScript · Tailwind CSS · D3.js</p>
         </div>

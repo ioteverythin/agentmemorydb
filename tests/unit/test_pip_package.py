@@ -1,4 +1,4 @@
-"""Tests for the agentmemodb pip package (embedded + http client).
+"""Tests for the engramdb pip package (embedded + http client).
 
 All embedded tests use ``:memory:`` — no files written to disk.
 """
@@ -10,14 +10,14 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-import agentmemodb
-from agentmemodb.client import Client
-from agentmemodb.embeddings import DummyEmbedding, EmbeddingFunction
-from agentmemodb.http_client import HttpClient
-from agentmemodb.masking import PIIMaskingEngine
-from agentmemodb.memory_manager import LongTermMemory, MemoryManager, ShortTermMemory
-from agentmemodb.store import SQLiteStore
-from agentmemodb.types import Memory, MemoryVersion, SearchResult
+import engramdb
+from engramdb.client import Client
+from engramdb.embeddings import DummyEmbedding, EmbeddingFunction
+from engramdb.http_client import HttpClient
+from engramdb.masking import PIIMaskingEngine
+from engramdb.memory_manager import LongTermMemory, MemoryManager, ShortTermMemory
+from engramdb.store import SQLiteStore
+from engramdb.types import Memory, MemoryVersion, SearchResult
 
 # ═══════════════════════════════════════════════════════════════════
 #  1. Package top-level imports
@@ -28,26 +28,26 @@ class TestPackageImports:
     """Verify top-level exports work."""
 
     def test_version(self):
-        assert agentmemodb.__version__ == "0.1.0"
+        assert engramdb.__version__ == "0.1.0"
 
     def test_client_exported(self):
-        assert agentmemodb.Client is Client
+        assert engramdb.Client is Client
 
     def test_http_client_exported(self):
-        assert agentmemodb.HttpClient is HttpClient
+        assert engramdb.HttpClient is HttpClient
 
     def test_types_exported(self):
-        assert agentmemodb.Memory is Memory
-        assert agentmemodb.SearchResult is SearchResult
-        assert agentmemodb.MemoryVersion is MemoryVersion
+        assert engramdb.Memory is Memory
+        assert engramdb.SearchResult is SearchResult
+        assert engramdb.MemoryVersion is MemoryVersion
 
     def test_embeddings_exported(self):
-        assert agentmemodb.DummyEmbedding is DummyEmbedding
+        assert engramdb.DummyEmbedding is DummyEmbedding
 
     def test_memory_manager_exported(self):
-        assert agentmemodb.MemoryManager is MemoryManager
-        assert agentmemodb.ShortTermMemory is ShortTermMemory
-        assert agentmemodb.LongTermMemory is LongTermMemory
+        assert engramdb.MemoryManager is MemoryManager
+        assert engramdb.ShortTermMemory is ShortTermMemory
+        assert engramdb.LongTermMemory is LongTermMemory
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -129,7 +129,7 @@ class TestDummyEmbedding:
 
     def test_openai_import_error(self):
         with pytest.raises(ImportError, match="openai"):
-            from agentmemodb.embeddings import OpenAIEmbedding
+            from engramdb.embeddings import OpenAIEmbedding
 
             with patch.dict("sys.modules", {"openai": None}):
                 OpenAIEmbedding()

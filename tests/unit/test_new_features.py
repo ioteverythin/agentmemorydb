@@ -207,8 +207,8 @@ class TestMCPResources:
         resources = resp["result"]["resources"]
         assert len(resources) == 2
         uris = {r["uri"] for r in resources}
-        assert "agentmemorydb://stats" in uris
-        assert "agentmemorydb://schema" in uris
+        assert "engramdb://stats" in uris
+        assert "engramdb://schema" in uris
 
     @pytest.mark.asyncio
     async def test_resources_read_schema(self):
@@ -217,7 +217,7 @@ class TestMCPResources:
             "jsonrpc": "2.0",
             "id": 10,
             "method": "resources/read",
-            "params": {"uri": "agentmemorydb://schema"},
+            "params": {"uri": "engramdb://schema"},
         }
         resp = await server.handle_message(msg)
 
@@ -235,7 +235,7 @@ class TestMCPResources:
             "jsonrpc": "2.0",
             "id": 11,
             "method": "resources/read",
-            "params": {"uri": "agentmemorydb://stats"},
+            "params": {"uri": "engramdb://stats"},
         }
         resp = await server.handle_message(msg)
 
@@ -251,7 +251,7 @@ class TestMCPResources:
             "jsonrpc": "2.0",
             "id": 12,
             "method": "resources/read",
-            "params": {"uri": "agentmemorydb://nonexistent"},
+            "params": {"uri": "engramdb://nonexistent"},
         }
         resp = await server.handle_message(msg)
         assert resp["result"]["contents"] == []
@@ -767,7 +767,7 @@ class TestNewSettings:
 
     # ── Existing settings still correct ──────────────────────
     def test_app_name(self):
-        assert settings.app_name == "AgentMemoryDB"
+        assert settings.app_name == "EngramDB"
 
     def test_scoring_weights_sum_to_one(self):
         total = (

@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-🤖 Agentic Personal Assistant — powered by AgentMemoryDB
+🤖 Agentic Personal Assistant — powered by EngramDB
 =========================================================
 
 A multi-turn conversational agent that:
-  1. Extracts facts/preferences from what you say → stores in AgentMemoryDB
+  1. Extracts facts/preferences from what you say → stores in EngramDB
   2. Recalls relevant memories when answering → hybrid vector search
   3. Builds a persistent profile across sessions (memories survive restarts)
   4. Shows memory operations in real-time so you can watch the DB work
@@ -29,7 +29,7 @@ from datetime import datetime, timezone
 ROOT = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, ROOT)
 
-from agentmemodb.http_client import HttpClient
+from engramdb.http_client import HttpClient
 
 # ═══════════════════════════════════════════════════════════════════
 #  Configuration
@@ -177,7 +177,7 @@ def generate_response(user_input: str, memories: list[str], turn: int) -> str:
 
 def print_header():
     print("\n" + "═" * 62)
-    print(f"  🤖 {AGENT_NAME} — Personal Assistant with AgentMemoryDB")
+    print(f"  🤖 {AGENT_NAME} — Personal Assistant with EngramDB")
     print("═" * 62)
     print(f"  Memory backend : {AGENTMEMO_URL}")
     if USER_ID:
@@ -272,7 +272,7 @@ def run_agent():
     """Main conversation loop."""
     print_header()
 
-    # Connect to AgentMemoryDB
+    # Connect to EngramDB
     print(f"  Connecting to {AGENTMEMO_URL} ...")
     db = HttpClient(AGENTMEMO_URL, timeout=60.0)
 
@@ -282,7 +282,7 @@ def run_agent():
         health = resp.json()
         print(f"  ✅ Connected! Server status: {health.get('status', '?')}")
     except Exception as e:
-        print(f"  ❌ Cannot connect to AgentMemoryDB: {e}")
+        print(f"  ❌ Cannot connect to EngramDB: {e}")
         print(f"     Make sure the server is running: docker compose up -d")
         return
 
@@ -358,7 +358,7 @@ def run_agent():
                 print(f"     ⚠️  Failed to store {fact['key']}: {e}")
 
         if stored:
-            print(f"  📝 Saved {stored} memory(ies) to AgentMemoryDB")
+            print(f"  📝 Saved {stored} memory(ies) to EngramDB")
 
         # ── Step 3: Recall relevant memories ──
         memories = recall_context(db, user_input)
@@ -388,7 +388,7 @@ def run_auto_demo():
     # Health check
     try:
         resp = db._client.get("/api/v1/health")
-        print(f"  ✅ Connected to AgentMemoryDB\n")
+        print(f"  ✅ Connected to EngramDB\n")
     except Exception as e:
         print(f"  ❌ Cannot connect: {e}")
         return

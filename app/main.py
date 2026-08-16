@@ -1,4 +1,4 @@
-"""FastAPI application entrypoint for AgentMemoryDB."""
+"""FastAPI application entrypoint for EngramDB."""
 
 from __future__ import annotations
 

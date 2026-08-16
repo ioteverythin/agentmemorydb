@@ -1,4 +1,4 @@
-"""AgentMemoryDB CLI — management commands for ops and development.
+"""EngramDB CLI — management commands for ops and development.
 
 Usage:
     python -m app.cli stats --user-id <UUID>
@@ -45,9 +45,9 @@ async def _session_context():
 
 
 @click.group()
-@click.version_option(version="0.1.0", prog_name="agentmemorydb")
+@click.version_option(version="0.1.0", prog_name="engramdb")
 def cli() -> None:
-    """AgentMemoryDB CLI — management and operations tool."""
+    """EngramDB CLI — management and operations tool."""
     pass
 
 

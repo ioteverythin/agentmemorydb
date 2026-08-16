@@ -1,7 +1,7 @@
 """Short-term & long-term memory abstractions for agentic AI.
 
 Provides two focused interfaces on top of the base
-:class:`~agentmemodb.client.Client`:
+:class:`~engramdb.client.Client`:
 
 * **ShortTermMemory** — ordered conversation buffer per thread
   (chat messages, working context, session-scoped).
@@ -12,8 +12,8 @@ Provides two focused interfaces on top of the base
 
 Usage::
 
-    import agentmemodb
-    from agentmemodb import MemoryManager
+    import engramdb
+    from engramdb import MemoryManager
 
     mgr = MemoryManager("user-1")
 
@@ -38,9 +38,9 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 
-from agentmemodb.client import Client
-from agentmemodb.embeddings import EmbeddingFunction
-from agentmemodb.types import Memory, SearchResult
+from engramdb.client import Client
+from engramdb.embeddings import EmbeddingFunction
+from engramdb.types import Memory, SearchResult
 
 
 # ────────────────────────────────────────────────────────────────
@@ -59,7 +59,7 @@ class ShortTermMemory:
     Parameters
     ----------
     client : Client
-        The underlying AgentMemoryDB embedded client.
+        The underlying EngramDB embedded client.
     user_id : str
         Owner of the conversation.
     thread_id : str, optional
@@ -230,7 +230,7 @@ class LongTermMemory:
     Parameters
     ----------
     client : Client
-        The underlying AgentMemoryDB embedded client.
+        The underlying EngramDB embedded client.
     user_id : str
         Owner of the memories.
     default_type : str
@@ -390,7 +390,7 @@ class MemoryManager:
 
     Usage::
 
-        from agentmemodb import MemoryManager
+        from engramdb import MemoryManager
 
         mgr = MemoryManager("agent-1")
 

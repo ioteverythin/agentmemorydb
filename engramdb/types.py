@@ -1,4 +1,4 @@
-"""Data types for the AgentMemoryDB pip package.
+"""Data types for the EngramDB pip package.
 
 Lightweight dataclasses — no Pydantic or server dependencies required.
 """

@@ -1,6 +1,6 @@
 ---
 name: Feature Request
-about: Suggest a feature for AgentMemoryDB
+about: Suggest a feature for EngramDB
 title: "[FEATURE] "
 labels: enhancement
 assignees: ''

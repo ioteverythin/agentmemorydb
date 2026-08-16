@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════
--- AgentMemoryDB — PostgreSQL Initialization
+-- EngramDB — PostgreSQL Initialization
 -- ═══════════════════════════════════════════════════════════
 -- This runs once when the Postgres container is first created.
 -- It enables the pgvector and uuid-ossp extensions.
@@ -16,5 +16,5 @@ CREATE EXTENSION IF NOT EXISTS pg_trgm;
 -- Confirm extensions are loaded
 DO $$
 BEGIN
-  RAISE NOTICE 'AgentMemoryDB: Extensions loaded — vector, uuid-ossp, pg_trgm';
+  RAISE NOTICE 'EngramDB: Extensions loaded — vector, uuid-ossp, pg_trgm';
 END $$;

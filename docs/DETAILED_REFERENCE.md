@@ -1,4 +1,4 @@
-# AgentMemoryDB — Detailed Technical Reference
+# EngramDB — Detailed Technical Reference
 
 > **SQL-native, auditable, event-sourced memory + state backend for agentic AI**
 >
@@ -8,7 +8,7 @@
 
 ## Table of Contents
 
-1. [What Is AgentMemoryDB?](#1-what-is-agentmemodb)
+1. [What Is EngramDB?](#1-what-is-engramdb)
 2. [Why It Exists — The Problem It Solves](#2-why-it-exists)
 3. [Core Architecture](#3-core-architecture)
 4. [The Data Pipeline: Event → Observation → Memory](#4-the-data-pipeline)
@@ -48,9 +48,9 @@
 
 ---
 
-## 1. What Is AgentMemoryDB?
+## 1. What Is EngramDB?
 
-AgentMemoryDB is a **self-hosted, production-grade memory backend** purpose-built for AI agents. It gives your agents:
+EngramDB is a **self-hosted, production-grade memory backend** purpose-built for AI agents. It gives your agents:
 
 - **Persistent, structured memory** — not just a vector store, but typed knowledge units with versioning, governance, and audit trails
 - **Hybrid retrieval** — searches combine vector similarity, recency, importance, authority, and confidence into a single composite score
@@ -66,7 +66,7 @@ It runs as a **single FastAPI service** backed by **PostgreSQL + pgvector**, dep
 
 Most agentic frameworks treat memory as an afterthought:
 
-| Problem | How Most Frameworks Handle It | How AgentMemoryDB Handles It |
+| Problem | How Most Frameworks Handle It | How EngramDB Handles It |
 |---------|-------------------------------|------------------------------|
 | Memory storage | JSON blob or vector-only store | PostgreSQL with JSONB + pgvector + full-text |
 | Audit trail | Fire-and-forget writes | Every mutation versioned; every retrieval logged |
@@ -224,7 +224,7 @@ A **Memory** is the canonical knowledge unit. It's identified by `(user_id, memo
 
 ## 5. Domain Models
 
-AgentMemoryDB uses **19 database tables** (18 server + 1 embedded):
+EngramDB uses **19 database tables** (18 server + 1 embedded):
 
 | Table | Purpose | Key Fields |
 |-------|---------|------------|
@@ -373,7 +373,7 @@ The Explorer UI renders this as an interactive D3.js force-directed graph with d
 
 ## 10. Task State Machine
 
-AgentMemoryDB includes a built-in task tracking system with **validated state transitions**:
+EngramDB includes a built-in task tracking system with **validated state transitions**:
 
 ```
               ┌──────────────────────────────────────┐
@@ -405,7 +405,7 @@ Every transition creates an immutable **TaskStateTransition** audit record with 
 
 ## 11. MCP Server (Model Context Protocol)
 
-AgentMemoryDB includes a built-in **MCP server** that lets AI agents (Claude, Cursor, custom agents) interact with memory through the standard Model Context Protocol (JSON-RPC 2.0).
+EngramDB includes a built-in **MCP server** that lets AI agents (Claude, Cursor, custom agents) interact with memory through the standard Model Context Protocol (JSON-RPC 2.0).
 
 ### Endpoint
 
@@ -542,7 +542,7 @@ http://localhost:5173/explorer      # Development (Vite dev server with API prox
 
 ## 14. Scheduled Maintenance
 
-AgentMemoryDB runs **5 automated maintenance jobs** in the background:
+EngramDB runs **5 automated maintenance jobs** in the background:
 
 | Job | Default Interval | Description |
 |-----|-----------------|-------------|
@@ -597,9 +597,9 @@ PostgreSQL Row Level Security for database-level tenant isolation:
 
 | Role | Permissions |
 |------|------------|
-| `agentmemodb_anon` | Read-only access to own data |
-| `agentmemodb_user` | Full CRUD on own data |
-| `agentmemodb_admin` | Unrestricted access to all data |
+| `engramdb_anon` | Read-only access to own data |
+| `engramdb_user` | Full CRUD on own data |
+| `engramdb_admin` | Unrestricted access to all data |
 
 ### How It Works
 
@@ -618,7 +618,7 @@ This provides **defense in depth** — even if the application layer has a bug, 
 ### How It Works
 
 1. Register a webhook: `POST /api/v1/webhooks` with URL, secret, and event types
-2. When a matching event occurs, AgentMemoryDB sends an HTTP POST to your URL
+2. When a matching event occurs, EngramDB sends an HTTP POST to your URL
 3. Payload is **HMAC-SHA256 signed** using your secret for verification
 4. Failed deliveries are **retried** with configurable max attempts
 5. Every delivery attempt is **audited** (status code, response body, timing)
@@ -724,7 +724,7 @@ MASKING_CUSTOM_PATTERNS=null                # Optional JSON array of custom patt
 
 ## 19. Embedding Providers
 
-AgentMemoryDB supports **5 embedding providers**:
+EngramDB supports **5 embedding providers**:
 
 | Provider | Config Value | Model | Runs Where |
 |----------|-------------|-------|------------|
@@ -760,7 +760,7 @@ class BaseEmbeddingProvider(ABC):
 
 ## 20. Full-Text Search
 
-In addition to vector similarity, AgentMemoryDB supports **PostgreSQL tsvector full-text search**:
+In addition to vector similarity, EngramDB supports **PostgreSQL tsvector full-text search**:
 
 - Memories are indexed with a `tsvector` column for keyword matching
 - Full-text results are combined with vector results in the hybrid scoring formula
@@ -774,7 +774,7 @@ This is useful when vector search alone misses exact keyword matches (e.g., prod
 
 ## 21. Access Tracking
 
-AgentMemoryDB tracks every memory retrieval and uses access frequency to boost importance:
+EngramDB tracks every memory retrieval and uses access frequency to boost importance:
 
 ### How It Works
 
@@ -873,12 +873,12 @@ When `ENABLE_METRICS=true` and `prometheus_client` is installed:
 
 | Metric | Type | Description |
 |--------|------|-------------|
-| `agentmemodb_request_count` | Counter | HTTP requests by method/path/status |
-| `agentmemodb_request_latency_seconds` | Histogram | Request duration distribution |
-| `agentmemodb_memory_upserts_total` | Counter | Memory upserts by action (created/updated/skipped) |
-| `agentmemodb_memory_searches_total` | Counter | Searches by strategy |
-| `agentmemodb_active_memories` | Gauge | Currently active memory count |
-| `agentmemodb_webhook_deliveries_total` | Counter | Webhook deliveries by status |
+| `engramdb_request_count` | Counter | HTTP requests by method/path/status |
+| `engramdb_request_latency_seconds` | Histogram | Request duration distribution |
+| `engramdb_memory_upserts_total` | Counter | Memory upserts by action (created/updated/skipped) |
+| `engramdb_memory_searches_total` | Counter | Searches by strategy |
+| `engramdb_active_memories` | Gauge | Currently active memory count |
+| `engramdb_webhook_deliveries_total` | Counter | Webhook deliveries by status |
 
 Exposed at `GET /metrics` (root path, not under `/api/v1`).
 
@@ -900,9 +900,9 @@ Exposed at `GET /metrics` (root path, not under `/api/v1`).
 ### Python SDK
 
 ```python
-from app.sdk import AgentMemoryDBClient
+from app.sdk import EngramDBClient
 
-async with AgentMemoryDBClient(
+async with EngramDBClient(
     base_url="http://localhost:8100",
     api_key="amdb_...",
 ) as client:
@@ -920,9 +920,9 @@ async with AgentMemoryDBClient(
 ### TypeScript SDK
 
 ```typescript
-import { AgentMemoryDB } from '@agentmemorydb/sdk';
+import { EngramDB } from '@engramdb/sdk';
 
-const db = new AgentMemoryDB({
+const db = new EngramDB({
   baseUrl: 'http://localhost:8100',
   apiKey: 'amdb_...',
 });
@@ -941,13 +941,13 @@ ws.on('memory.created', (data) => console.log(data));
 ## 27. CLI Tool
 
 ```bash
-agentmemodb health                           # Health check
-agentmemodb stats                            # Memory statistics
-agentmemodb export --user-id UUID -o out.json   # Export to JSON
-agentmemodb import data.json                 # Import from JSON
-agentmemodb archive-stale --days 90          # Archive old memories
-agentmemodb consolidate                      # Run dedup + merge
-agentmemodb recompute-recency                # Refresh recency scores
+engramdb health                           # Health check
+engramdb stats                            # Memory statistics
+engramdb export --user-id UUID -o out.json   # Export to JSON
+engramdb import data.json                 # Import from JSON
+engramdb archive-stale --days 90          # Archive old memories
+engramdb consolidate                      # Run dedup + merge
+engramdb recompute-recency                # Refresh recency scores
 ```
 
 ---
@@ -957,9 +957,9 @@ agentmemodb recompute-recency                # Refresh recency scores
 A lightweight adapter for LangGraph / LangChain integration:
 
 ```python
-from app.adapters.langgraph_store import AgentMemoryDBStore
+from app.adapters.langgraph_store import EngramDBStore
 
-store = AgentMemoryDBStore(base_url="http://localhost:8100/api/v1")
+store = EngramDBStore(base_url="http://localhost:8100/api/v1")
 
 await store.put(user_id, "pref:color", "User likes blue.")
 results = await store.search(user_id, "What colour?", top_k=3)
@@ -1104,7 +1104,7 @@ All settings via environment variables or `.env`:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `APP_NAME` | `AgentMemoryDB` | Application name |
+| `APP_NAME` | `EngramDB` | Application name |
 | `ENVIRONMENT` | `development` | Environment name |
 | `LOG_LEVEL` | `INFO` | Python log level |
 | `ENABLE_DOCS` | `true` | Enable Swagger/ReDoc |
@@ -1247,7 +1247,7 @@ Both `db` and `app` services have health checks:
 **180+ source files** across the full project:
 
 ```
-agentmemodb/
+engramdb/
 ├── app/                           # Main application (89 Python files)
 │   ├── api/v1/                    # REST routes (20 modules)
 │   │   ├── health.py              # Health & version endpoints
@@ -1296,10 +1296,10 @@ agentmemodb/
 │   ├── adapters/                  # Framework integrations
 │   │   └── langgraph_store.py     # LangGraph/LangChain adapter
 │   ├── sdk/                       # Python client
-│   │   └── client.py              # AgentMemoryDBClient (async)
+│   │   └── client.py              # EngramDBClient (async)
 │   ├── static/explorer/           # Built React frontend
 │   └── cli.py                     # Click CLI tool
-├── agentmemodb/                   # Pip-installable package (7 files)
+├── engramdb/                   # Pip-installable package (7 files)
 │   ├── __init__.py                # Client, HttpClient, types, embeddings
 │   ├── client.py                  # Embedded Client (SQLite + NumPy)
 │   ├── http_client.py             # Remote Client (httpx)
@@ -1378,14 +1378,14 @@ make test-unit                           # Via Makefile
 
 ## 34. Pip Package (Embedded & Remote Client)
 
-AgentMemoryDB can be used as a **pip-installable library** — like ChromaDB, LanceDB, or Qdrant — without Docker or PostgreSQL.
+EngramDB can be used as a **pip-installable library** — like ChromaDB, LanceDB, or Qdrant — without Docker or PostgreSQL.
 
 ### Install
 
 ```bash
-pip install agentmemodb                # core (SQLite embedded)
-pip install agentmemodb[openai]        # + OpenAI embeddings
-pip install agentmemodb[all]           # + all embedding providers
+pip install engramdb                # core (SQLite embedded)
+pip install engramdb[openai]        # + OpenAI embeddings
+pip install engramdb[all]           # + all embedding providers
 ```
 
 ### Two Modes, One API
@@ -1393,11 +1393,11 @@ pip install agentmemodb[all]           # + all embedding providers
 #### Embedded Mode (SQLite, zero config)
 
 ```python
-import agentmemodb
+import engramdb
 
-db = agentmemodb.Client()                       # default: ./agentmemodb_data/
-db = agentmemodb.Client(path=":memory:")        # in-memory (tests)
-db = agentmemodb.Client(path="./my_memories")   # custom directory
+db = engramdb.Client()                       # default: ./engramdb_data/
+db = engramdb.Client(path=":memory:")        # in-memory (tests)
+db = engramdb.Client(path="./my_memories")   # custom directory
 
 # Store memories
 db.upsert("user-1", "pref:lang", "User prefers Python", memory_type="semantic")
@@ -1420,9 +1420,9 @@ db.close()
 #### Remote Mode (connect to running server)
 
 ```python
-import agentmemodb
+import engramdb
 
-db = agentmemodb.HttpClient("http://localhost:8100", api_key="amdb_...")
+db = engramdb.HttpClient("http://localhost:8100", api_key="amdb_...")
 
 # Same API!
 db.upsert("user-1", "pref:lang", "User prefers Python")
@@ -1450,20 +1450,20 @@ Both `Client` and `HttpClient` expose the same methods:
 | Provider | Usage | Requires |
 |----------|-------|----------|
 | **DummyEmbedding** (default) | `Client()` | Nothing (hash-based, no API key) |
-| **OpenAIEmbedding** | `Client(embedding_fn=agentmemodb.OpenAIEmbedding(api_key="sk-..."))` | `pip install openai` |
+| **OpenAIEmbedding** | `Client(embedding_fn=engramdb.OpenAIEmbedding(api_key="sk-..."))` | `pip install openai` |
 | **Custom** | `Client(embedding_fn=my_fn)` | Any callable matching `EmbeddingFunction` protocol |
 
 ### PII Masking
 
 ```python
-db = agentmemodb.Client(mask_pii=True)
+db = engramdb.Client(mask_pii=True)
 db.upsert("u1", "k", "Email josh@co.com, SSN 123-45-6789")
 # Stored as: "Email [EMAIL], SSN [SSN]"
 ```
 
 ### Comparison with Other Libraries
 
-| Feature | AgentMemoryDB | ChromaDB | Mem0 |
+| Feature | EngramDB | ChromaDB | Mem0 |
 |---------|--------------|----------|------|
 | Embedded mode | ✅ SQLite | ✅ SQLite | ❌ Server only |
 | Server mode | ✅ PostgreSQL + pgvector | ✅ Chroma server | ✅ Platform |
@@ -1483,7 +1483,7 @@ db.upsert("u1", "k", "Email josh@co.com, SSN 123-45-6789")
 ### Architecture (Embedded)
 
 ```
-  agentmemodb.Client()                            agentmemodb.MemoryManager()
+  engramdb.Client()                            engramdb.MemoryManager()
        │                                              │
        ├── EmbeddingFunction (Dummy / OpenAI / HF)    ├── ShortTermMemory  (thread_messages table)
        ├── PIIMaskingEngine (optional)                 ├── LongTermMemory   (wraps Client)
@@ -1497,7 +1497,7 @@ db.upsert("u1", "k", "Email josh@co.com, SSN 123-45-6789")
 ### Package Files
 
 ```
-agentmemodb/
+engramdb/
 ├── __init__.py                # Client, HttpClient, MemoryManager, types, embeddings
 ├── client.py                  # Embedded Client (SQLite + NumPy)
 ├── http_client.py             # Remote Client (httpx)
@@ -1524,7 +1524,7 @@ The `MemoryManager` class provides a unified interface for **short-term conversa
 A per-thread conversation buffer backed by the `thread_messages` SQLite table:
 
 ```python
-from agentmemodb import MemoryManager
+from engramdb import MemoryManager
 
 mgr = MemoryManager("user-1")
 
@@ -1621,32 +1621,32 @@ with MemoryManager("user-1", embedding_fn=my_embedding) as mgr:
 
 ## 36. LangChain & LangGraph Integrations
 
-The pip package includes built-in integrations for both LangChain and LangGraph, available at `agentmemodb.integrations`.
+The pip package includes built-in integrations for both LangChain and LangGraph, available at `engramdb.integrations`.
 
 ### LangChain Components
 
 ```python
-from agentmemodb.integrations.langchain import (
-    AgentMemoryDBChatHistory,         # BaseChatMessageHistory
-    AgentMemoryDBRetriever,           # BaseRetriever → Documents
-    AgentMemoryDBConversationMemory,  # History + relevant knowledge
+from engramdb.integrations.langchain import (
+    EngramDBChatHistory,         # BaseChatMessageHistory
+    EngramDBRetriever,           # BaseRetriever → Documents
+    EngramDBConversationMemory,  # History + relevant knowledge
     create_memory_tool,               # Tool for agent store/recall
 )
 ```
 
 | Component | LangChain Base Class | Description |
 |-----------|---------------------|-------------|
-| **AgentMemoryDBChatHistory** | `BaseChatMessageHistory` | Stores conversation turns as episodic memories. Drop-in for LangChain chains. |
-| **AgentMemoryDBRetriever** | `BaseRetriever` | Semantic search → `Document` objects with `page_content`, `metadata` (key, score, type). |
-| **AgentMemoryDBConversationMemory** | — | Combines chat history + relevant long-term memories into `load_memory_variables()`. Returns `{history, relevant_context}`. |
+| **EngramDBChatHistory** | `BaseChatMessageHistory` | Stores conversation turns as episodic memories. Drop-in for LangChain chains. |
+| **EngramDBRetriever** | `BaseRetriever` | Semantic search → `Document` objects with `page_content`, `metadata` (key, score, type). |
+| **EngramDBConversationMemory** | — | Combines chat history + relevant long-term memories into `load_memory_variables()`. Returns `{history, relevant_context}`. |
 | **create_memory_tool()** | `Tool` | Creates a LangChain Tool that accepts JSON `{"action": "store"/"recall", ...}`. Agents can use this to self-manage memory. |
 
 ### LangGraph Components
 
 ```python
-from agentmemodb.integrations.langgraph import (
-    AgentMemoryDBStore,        # Long-term memory for nodes
-    AgentMemoryDBSaver,        # Checkpoint persistence
+from engramdb.integrations.langgraph import (
+    EngramDBStore,        # Long-term memory for nodes
+    EngramDBSaver,        # Checkpoint persistence
     create_memory_node,        # Recall node for StateGraph
     create_save_memory_node,   # Save node for StateGraph
 )
@@ -1654,8 +1654,8 @@ from agentmemodb.integrations.langgraph import (
 
 | Component | Description |
 |-----------|-------------|
-| **AgentMemoryDBStore** | `put`/`search`/`search_as_text`/`get`/`delete`/`list`/`count` with namespace support. |
-| **AgentMemoryDBSaver** | Checkpoint persistence — `put`/`get`/`get_tuple`/`list_checkpoints`/`delete_thread`. Supports time-travel. |
+| **EngramDBStore** | `put`/`search`/`search_as_text`/`get`/`delete`/`list`/`count` with namespace support. |
+| **EngramDBSaver** | Checkpoint persistence — `put`/`get`/`get_tuple`/`list_checkpoints`/`delete_thread`. Supports time-travel. |
 | **create_memory_node()** | Pre-built recall node: reads `input_key` from state, injects relevant memories into `context_key`. |
 | **create_save_memory_node()** | Pre-built save node: reads `content_key` from state and persists to long-term memory. |
 
@@ -1663,7 +1663,7 @@ from agentmemodb.integrations.langgraph import (
 
 ```python
 from langgraph.graph import StateGraph, END
-from agentmemodb import MemoryManager
+from engramdb import MemoryManager
 
 mgr = MemoryManager("user-1", embedding_fn=my_embedding)
 
@@ -1692,9 +1692,9 @@ result = agent.invoke({"input": "What should I use for auth?"})
 ### Install Extras
 
 ```bash
-pip install agentmemodb[langchain]          # LangChain only
-pip install agentmemodb[langgraph]          # LangGraph (includes langchain-core)
-pip install agentmemodb[all]                # Everything
+pip install engramdb[langchain]          # LangChain only
+pip install engramdb[langgraph]          # LangGraph (includes langchain-core)
+pip install engramdb[all]                # Everything
 ```
 
 ---
@@ -1729,7 +1729,7 @@ python pkg/publish.py --clean
 
 1. Create an account at https://pypi.org (or https://test.pypi.org for testing)
 2. Go to **Account Settings → API Tokens → Add API Token**
-3. Set the token scope to the `agentmemodb` project (or all projects for first upload)
+3. Set the token scope to the `engramdb` project (or all projects for first upload)
 4. Configure twine with the token:
 
 ```bash
@@ -1756,8 +1756,8 @@ pkg/
 ├── README.md                   # PyPI-facing documentation
 ├── publish.py                  # Build + publish script
 ├── dist/                       # Built artifacts (after build)
-│   ├── agentmemodb-0.1.0-py3-none-any.whl
-│   └── agentmemodb-0.1.0.tar.gz
+│   ├── engramdb-0.1.0-py3-none-any.whl
+│   └── engramdb-0.1.0.tar.gz
 └── _build/                     # Temporary build directory (auto-cleaned)
 ```
 
@@ -1765,21 +1765,21 @@ pkg/
 
 | Extra | Install Command | What It Adds |
 |-------|----------------|--------------|
-| *(core)* | `pip install agentmemodb` | SQLite + NumPy (zero config) |
-| `remote` | `pip install agentmemodb[remote]` | + httpx (connect to server) |
-| `openai` | `pip install agentmemodb[openai]` | + OpenAI embeddings |
-| `huggingface` | `pip install agentmemodb[huggingface]` | + sentence-transformers |
-| `langchain` | `pip install agentmemodb[langchain]` | + langchain-core |
-| `langgraph` | `pip install agentmemodb[langgraph]` | + langgraph + langchain-core |
-| `all` | `pip install agentmemodb[all]` | Everything above |
+| *(core)* | `pip install engramdb` | SQLite + NumPy (zero config) |
+| `remote` | `pip install engramdb[remote]` | + httpx (connect to server) |
+| `openai` | `pip install engramdb[openai]` | + OpenAI embeddings |
+| `huggingface` | `pip install engramdb[huggingface]` | + sentence-transformers |
+| `langchain` | `pip install engramdb[langchain]` | + langchain-core |
+| `langgraph` | `pip install engramdb[langgraph]` | + langgraph + langchain-core |
+| `all` | `pip install engramdb[all]` | Everything above |
 
 ### Version Bumping
 
 Update the version in **two places** before publishing:
 
 1. `pkg/pyproject.toml` → `version = "X.Y.Z"`
-2. `agentmemodb/__init__.py` → `__version__ = "X.Y.Z"`
+2. `engramdb/__init__.py` → `__version__ = "X.Y.Z"`
 
 ---
 
-*Generated from AgentMemoryDB v0.1.0 source code — 190+ files, 19 tables, 55+ endpoints, 314 tests.*
+*Generated from EngramDB v0.1.0 source code — 190+ files, 19 tables, 55+ endpoints, 314 tests.*

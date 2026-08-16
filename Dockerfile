@@ -1,5 +1,5 @@
 # ═══════════════════════════════════════════════════════════
-# AgentMemoryDB — Production-Ready Multi-Stage Dockerfile
+# EngramDB — Production-Ready Multi-Stage Dockerfile
 # ═══════════════════════════════════════════════════════════
 
 # ── Stage 1: Frontend ───────────────────────────────────────
@@ -32,8 +32,8 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # ── Stage 2: Runtime ───────────────────────────────────────
 FROM python:3.11-slim AS runtime
 
-LABEL maintainer="AgentMemoryDB Contributors"
-LABEL org.opencontainers.image.source="https://github.com/agentmemorydb/agentmemorydb"
+LABEL maintainer="EngramDB Contributors"
+LABEL org.opencontainers.image.source="https://github.com/engramdb/engramdb"
 LABEL org.opencontainers.image.description="SQL-native, auditable memory backend for agentic AI"
 
 # Runtime-only system deps

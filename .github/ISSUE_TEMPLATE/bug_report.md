@@ -1,6 +1,6 @@
 ---
 name: Bug Report
-about: Report a bug in AgentMemoryDB
+about: Report a bug in EngramDB
 title: "[BUG] "
 labels: bug
 assignees: ''
@@ -30,7 +30,7 @@ What actually happened, including error messages or logs.
 - OS: [e.g., Ubuntu 22.04]
 - Python version: [e.g., 3.11.6]
 - PostgreSQL version: [e.g., 16.1]
-- AgentMemoryDB version: [e.g., 0.1.0]
+- EngramDB version: [e.g., 0.1.0]
 - Deployment: [Docker / bare metal / cloud]
 
 ## Additional Context

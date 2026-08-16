@@ -1,19 +1,19 @@
-# @agentmemorydb/sdk
+# @engramdb/sdk
 
-TypeScript/JavaScript SDK for [AgentMemoryDB](https://github.com/agentmemorydb/agentmemorydb) — the SQL-native, auditable, event-sourced memory backend for agentic AI.
+TypeScript/JavaScript SDK for [EngramDB](https://github.com/engramdb/engramdb) — the SQL-native, auditable, event-sourced memory backend for agentic AI.
 
 ## Install
 
 ```bash
-npm install @agentmemorydb/sdk
+npm install @engramdb/sdk
 ```
 
 ## Quick Start
 
 ```typescript
-import { AgentMemoryDB } from '@agentmemorydb/sdk';
+import { EngramDB } from '@engramdb/sdk';
 
-const db = new AgentMemoryDB({
+const db = new EngramDB({
   baseUrl: 'http://localhost:8000',
   apiKey: 'your-api-key',
 });
@@ -49,7 +49,7 @@ ws.onmessage = (event) => {
 - **Namespaced sub-clients**: `memories`, `events`, `links`, `graph`, `consolidation`, `data`
 - **WebSocket real-time events** via `.realtime(channels)`
 - **Hybrid search** with 5-signal scoring (vector + recency + importance + authority + confidence)
-- **Automatic error handling** with typed `AgentMemoryDBError`
+- **Automatic error handling** with typed `EngramDBError`
 
 ## API Reference
 

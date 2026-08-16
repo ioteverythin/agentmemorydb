@@ -18,7 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.metrics import record_webhook_delivery
 from app.models.webhook import Webhook, WebhookDelivery
 
-logger = logging.getLogger("agentmemorydb.webhooks")
+logger = logging.getLogger("engramdb.webhooks")
 
 
 class WebhookService:

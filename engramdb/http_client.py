@@ -1,17 +1,17 @@
-"""Remote AgentMemoryDB client — connects to a running server over HTTP.
+"""Remote EngramDB client — connects to a running server over HTTP.
 
 Usage::
 
-    import agentmemodb
+    import engramdb
 
-    db = agentmemodb.HttpClient("http://localhost:8100")
-    db = agentmemodb.HttpClient("http://localhost:8100", api_key="amdb_...")
+    db = engramdb.HttpClient("http://localhost:8100")
+    db = engramdb.HttpClient("http://localhost:8100", api_key="amdb_...")
 
     db.upsert("user-1", "pref:lang", "User prefers Python")
     results = db.search("user-1", "language?")
     db.close()
 
-Provides the **same API surface** as :class:`agentmemodb.Client` so
+Provides the **same API surface** as :class:`engramdb.Client` so
 you can swap between embedded and remote mode without changing code.
 """
 
@@ -22,16 +22,16 @@ from typing import Any
 
 import httpx
 
-from agentmemodb.types import Memory, SearchResult
+from engramdb.types import Memory, SearchResult
 
 
 class HttpClient:
-    """Synchronous HTTP client for a remote AgentMemoryDB server.
+    """Synchronous HTTP client for a remote EngramDB server.
 
     Parameters
     ----------
     url
-        Base URL of the AgentMemoryDB server (e.g. ``http://localhost:8100``).
+        Base URL of the EngramDB server (e.g. ``http://localhost:8100``).
     api_key
         Optional API key sent via ``X-API-Key`` header.
     timeout
@@ -63,7 +63,7 @@ class HttpClient:
             except Exception:
                 detail = resp.text
             raise RuntimeError(
-                f"AgentMemoryDB HTTP {resp.status_code}: {detail}"
+                f"EngramDB HTTP {resp.status_code}: {detail}"
             )
 
     @staticmethod
@@ -231,4 +231,4 @@ class HttpClient:
         self.close()
 
     def __repr__(self) -> str:
-        return f"agentmemodb.HttpClient(url={self._client.base_url!r})"
+        return f"engramdb.HttpClient(url={self._client.base_url!r})"
