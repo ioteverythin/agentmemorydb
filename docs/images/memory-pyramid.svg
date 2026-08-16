@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="440" viewBox="0 0 880 440" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">
+  <rect width="880" height="440" rx="14" fill="#0d1117"/>
+  <text x="32" y="46" fill="#e6edf3" font-size="22" font-weight="700">The Memory Pyramid</text>
+  <text x="32" y="70" fill="#8b949e" font-size="14">Raw conversation is distilled, layer by layer, into progressively more stable memory.</text>
+
+  <!-- Pyramid tiers (apex = stable, base = volatile) -->
+  <polygon points="260,96 300,96 357,169 203,169" fill="#bc8cff"/>
+  <polygon points="203,169 357,169 414,242 146,242" fill="#58a6ff"/>
+  <polygon points="146,242 414,242 472,315 88,315" fill="#39c5cf"/>
+  <polygon points="88,315 472,315 530,388 30,388" fill="#3fb950"/>
+
+  <text x="280" y="138" fill="#0d1117" font-size="15" font-weight="700" text-anchor="middle">L3 · Persona</text>
+  <text x="280" y="212" fill="#0d1117" font-size="15" font-weight="700" text-anchor="middle">L2 · Scenario</text>
+  <text x="280" y="285" fill="#0d1117" font-size="15" font-weight="700" text-anchor="middle">L1 · Atom</text>
+  <text x="280" y="358" fill="#0d1117" font-size="15" font-weight="700" text-anchor="middle">L0 · Raw</text>
+
+  <!-- Legend -->
+  <g font-size="14">
+    <rect x="580" y="112" width="14" height="14" rx="3" fill="#bc8cff"/>
+    <text x="604" y="124" fill="#e6edf3" font-weight="600">Persona</text>
+    <text x="604" y="142" fill="#8b949e">Long-term profile &amp; stable patterns</text>
+
+    <rect x="580" y="176" width="14" height="14" rx="3" fill="#58a6ff"/>
+    <text x="604" y="188" fill="#e6edf3" font-weight="600">Scenario</text>
+    <text x="604" y="206" fill="#8b949e">Knowledge blocks per project / task</text>
+
+    <rect x="580" y="240" width="14" height="14" rx="3" fill="#39c5cf"/>
+    <text x="604" y="252" fill="#e6edf3" font-weight="600">Atom</text>
+    <text x="604" y="270" fill="#8b949e">Facts, preferences, constraints</text>
+
+    <rect x="580" y="304" width="14" height="14" rx="3" fill="#3fb950"/>
+    <text x="604" y="316" fill="#e6edf3" font-weight="600">Raw</text>
+    <text x="604" y="334" fill="#8b949e">Verbatim conversation &amp; events</text>
+  </g>
+
+  <!-- Stability annotations in the empty corners -->
+  <text x="40" y="120" fill="#bc8cff" font-size="13" font-weight="600">▲ stable · cacheable</text>
+  <text x="150" y="410" fill="#3fb950" font-size="13" font-weight="600">▼ volatile · query-specific recall</text>
+</svg>

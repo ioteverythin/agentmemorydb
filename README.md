@@ -4,10 +4,18 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/engramdb/engramdb/actions"><img src="https://img.shields.io/github/actions/workflow/status/engramdb/engramdb/ci.yml?branch=main&label=CI" alt="CI"></a>
+  <a href="https://github.com/ioteverythin/EngramDB/actions"><img src="https://img.shields.io/github/actions/workflow/status/ioteverythin/EngramDB/ci.yml?branch=main&label=CI" alt="CI"></a>
   <a href="https://pypi.org/project/engramdb/"><img src="https://img.shields.io/pypi/v/engramdb?color=blue" alt="PyPI"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-green" alt="License"></a>
   <a href="https://www.python.org/"><img src="https://img.shields.io/badge/python-3.11%2B-blue" alt="Python"></a>
+</p>
+
+<p align="center">
+  <img src="docs/images/demo.gif" alt="EngramDB demo — short-term memory, promotion, recall, versioning, and context assembly" width="820">
+</p>
+
+<p align="center">
+  <em>Agents remember. The next one starts where the last left off — no re-introductions.</em>
 </p>
 
 ---
@@ -78,19 +86,21 @@ Most agentic frameworks treat memory as an afterthought — a JSON blob, a vecto
 └──────────────────────────────────────────────────────┘
 ```
 
+### The Memory Pyramid
+
+Raw conversation is distilled, layer by layer, into progressively more stable
+memory. Higher layers bootstrap context cheaply; lower layers serve precise,
+query-specific recall.
+
+<p align="center">
+  <img src="docs/images/memory-pyramid.svg" alt="The memory pyramid: L0 Raw → L1 Atom → L2 Scenario → L3 Persona" width="820">
+</p>
+
 ### Core Pipeline: Event → Observation → Memory
 
-```
-  Event (immutable)
-    │
-    ├── extract ──▶  Observation (candidate, confidence-scored)
-    │                      │
-    │                      ├── upsert ──▶  Memory (canonical, versioned)
-    │                      │                  │
-    │                      │                  ├── content_hash dedup
-    │                      │                  ├── contradiction → new version
-    │                      │                  └── identical → skip
-```
+<p align="center">
+  <img src="docs/images/pipeline.svg" alt="Event → Observation → Memory pipeline" width="820">
+</p>
 
 Every memory is identified by `(user_id, memory_key)`.  Updates create a
 `MemoryVersion` snapshot before overwriting, giving you a full audit trail.
@@ -98,6 +108,19 @@ Every memory is identified by `(user_id, memory_key)`.  Updates create a
 ---
 
 ## Quick Start
+
+### 0. Try it in 60 seconds — no setup
+
+The GIF above is real output from the embeddable client. Run it yourself with
+zero configuration (in-memory SQLite, no server, no API key):
+
+```bash
+pip install engramdb        # or: pip install -e . from a checkout
+python examples/demo.py
+```
+
+It walks through short-term memory, promotion to long-term, semantic recall,
+versioning, and context assembly.
 
 ### 1. Clone & Start
 
@@ -177,6 +200,14 @@ pytest tests/unit -v
 ---
 
 ## Hybrid Scoring
+
+Retrieval fuses dense (vector) and sparse (full-text/BM25) rankings with
+Reciprocal Rank Fusion, then re-ranks the fused candidates by a weighted
+governance score:
+
+<p align="center">
+  <img src="docs/images/hybrid-retrieval.svg" alt="Hybrid retrieval: dense vector + sparse full-text fused via RRF, then re-ranked" width="820">
+</p>
 
 Every retrieval scores candidates with a weighted composite:
 
