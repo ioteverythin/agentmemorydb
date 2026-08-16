@@ -179,6 +179,23 @@ These are latent bugs the analysis surfaced in EngramDB itself:
     integration test; PostgreSQL rejects `SET … = $1`, which would have broken
     *every* production vector search. Now inlined as a coerced int.
 
+### 4.5 Follow-up adoptions (later PRs)
+
+Two more of Tencent's good ideas, adopted without their accompanying flaws:
+
+- **Self-filling pyramid (async distillation).** A pluggable, deterministic
+  distiller rolls a user's atoms up into `scenario:<topic>` blocks and a single
+  `persona:core`, run on-demand (`POST /distillation/run`, with `dry_run`
+  preview) or on a schedule. *Better than theirs:* fail-**closed** and
+  idempotent (their dedup fails open and duplicates on any LLM hiccup — X2),
+  and the strategy is swappable for an LLM without touching the service.
+- **Importance/access-aware forgetting.** Replaces the blunt `importance < 0.3`
+  archive rule with a retention score blending recency (of last *activity* — a
+  write *or* a recall), importance, and access frequency; distilled layers are
+  exempt. *Better than theirs:* their forgetting kills a priority-90 persona
+  fact the same day as chit-chat (X3); ours keeps hot and high-value memories
+  and only decays the stale, unused, low-value ones.
+
 ### 4.4 What we deliberately did **not** copy
 
 - No plaintext credential storage (we hash API keys), no TLS-disabling SDK

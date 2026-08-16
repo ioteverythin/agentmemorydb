@@ -32,6 +32,43 @@ def normalize_authority(authority_level: int, max_level: int = 4) -> float:
     return min(max(authority_level, 1), max_level) / max_level
 
 
+def normalize_access(access_count: int, saturation: int = 20) -> float:
+    """Log-scaled, saturating access-frequency signal in [0, 1].
+
+    A single access already counts; the curve flattens as ``access_count``
+    approaches ``saturation`` so a hot memory can't dominate purely on volume.
+    """
+    if access_count <= 0:
+        return 0.0
+    return min(1.0, math.log1p(access_count) / math.log1p(max(saturation, 1)))
+
+
+def compute_retention_score(
+    *,
+    recency_score: float,
+    importance_score: float,
+    access_count: int,
+    weight_recency: float = 0.4,
+    weight_importance: float = 0.4,
+    weight_access: float = 0.2,
+    access_saturation: int = 20,
+) -> float:
+    """Composite *keep-or-forget* score in [0, 1].
+
+    Blends how recently a memory was touched, how important it is, and how
+    often it is actually used. Memories below a threshold are candidates for
+    archival — so, unlike a flat ``importance < 0.3`` rule, a rarely-important
+    but frequently-recalled fact is retained, and a stale low-value one decays.
+    """
+    access_norm = normalize_access(access_count, access_saturation)
+    return round(
+        weight_recency * recency_score
+        + weight_importance * importance_score
+        + weight_access * access_norm,
+        6,
+    )
+
+
 def compute_final_score(
     *,
     vector_similarity: float | None = None,
