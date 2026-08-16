@@ -64,6 +64,19 @@ class RetrievalService:
 
         overfetch = max(req.top_k * settings.retrieval_overfetch_multiplier, req.top_k)
 
+        # ── Viewer access predicate (opt-in team/shared retrieval) ─
+        access_predicate = None
+        if req.include_shared:
+            from app.services.access_service import AccessService
+            from app.services.team_service import TeamService
+
+            team_ids = await TeamService(self._session).get_user_team_ids(req.user_id)
+            access_predicate = AccessService(self._session).accessible_predicate(
+                viewer_user_id=req.user_id,
+                team_ids=team_ids,
+                as_agent_id=req.as_agent_id,
+            )
+
         # ── Dense (vector / metadata) candidates ────────────────
         vector_results = await self._memory_repo.search(
             user_id=req.user_id,
@@ -77,6 +90,7 @@ class RetrievalService:
             min_importance=req.min_importance,
             include_expired=req.include_expired,
             limit=overfetch,
+            access_predicate=access_predicate,
         )
 
         # ── Sparse (full-text / BM25) candidates ────────────────
@@ -94,6 +108,7 @@ class RetrievalService:
                 min_importance=req.min_importance,
                 include_expired=req.include_expired,
                 limit=overfetch,
+                access_predicate=access_predicate,
             )
 
         # ── Merge candidate pools ───────────────────────────────

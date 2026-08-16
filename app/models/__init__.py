@@ -18,6 +18,7 @@ from app.models.event import Event
 from app.models.masking_log import MaskingLog
 from app.models.memory import Memory
 from app.models.memory_access_log import MemoryAccessLog
+from app.models.memory_acl import MemoryACL
 from app.models.memory_link import MemoryLink
 from app.models.memory_version import MemoryVersion
 from app.models.observation import Observation
@@ -25,6 +26,7 @@ from app.models.project import Project
 from app.models.retrieval_log import RetrievalLog, RetrievalLogItem
 from app.models.task import Task
 from app.models.task_state_transition import TaskStateTransition
+from app.models.team import Team, TeamMembership
 from app.models.user import User
 from app.models.webhook import Webhook, WebhookDelivery
 
@@ -38,6 +40,7 @@ __all__ = [
     "LinkType",
     "MaskingLog",
     "Memory",
+    "MemoryACL",
     "MemoryAccessLog",
     "MemoryLink",
     "MemoryScope",
@@ -54,6 +57,8 @@ __all__ = [
     "Task",
     "TaskState",
     "TaskStateTransition",
+    "Team",
+    "TeamMembership",
     "User",
     "Webhook",
     "WebhookDelivery",

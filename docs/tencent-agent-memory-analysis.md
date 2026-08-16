@@ -196,6 +196,14 @@ Two more of Tencent's good ideas, adopted without their accompanying flaws:
   fact the same day as chit-chat (X3); ours keeps hot and high-value memories
   and only decays the stale, unused, low-value ones.
 
+- **Team memory + ACL + agent loadouts.** Teams, memberships (admin/member),
+  and per-memory `visibility` (`private` / `team` / `restricted` / `agent`) with
+  an ACL for restricted grants and agent-bound "loadouts". Retrieval opt-in
+  (`include_shared`) ORs a viewer's own memories with what's shared to them.
+  *Better than theirs:* enforced at the query layer and gated (owner-only
+  sharing, admin-only membership) — their ACL enforcement is dead code and
+  tenancy is client-asserted (C2, C5).
+
 ### 4.4 What we deliberately did **not** copy
 
 - No plaintext credential storage (we hash API keys), no TLS-disabling SDK

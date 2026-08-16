@@ -23,6 +23,8 @@ from app.schemas.memory import (
     MemoryVersionResponse,
 )
 from app.schemas.memory_link import MemoryLinkResponse
+from app.schemas.team import ACLGrantRequest, ACLResponse, MemoryShareRequest
+from app.services.access_service import AccessService
 from app.services.context_assembly_service import ContextAssemblyService
 from app.services.memory_service import MemoryService
 from app.services.retrieval_service import RetrievalService
@@ -93,6 +95,72 @@ async def assemble_context(
     enforce_tenant(api_key, data.user_id)
     svc = ContextAssemblyService(session)
     return await svc.assemble(data)
+
+
+@router.post("/{memory_id}/share", response_model=MemoryResponse)
+async def share_memory(
+    memory_id: uuid.UUID,
+    data: MemoryShareRequest,
+    session: AsyncSession = Depends(get_session),
+    api_key: APIKey | None = Depends(get_current_api_key),
+) -> MemoryResponse:
+    """Change a memory's visibility (private / team / restricted / agent).
+
+    Only the memory's owner may share it, and only into a team they belong to.
+    """
+    enforce_tenant(api_key, data.actor_user_id)
+    memory = await AccessService(session).share_memory(
+        memory_id=memory_id,
+        actor_user_id=data.actor_user_id,
+        visibility=data.visibility,
+        team_id=data.team_id,
+        agent_id=data.agent_id,
+    )
+    return MemoryResponse.model_validate(memory)
+
+
+@router.get("/{memory_id}/acl", response_model=list[ACLResponse])
+async def list_memory_acl(
+    memory_id: uuid.UUID,
+    session: AsyncSession = Depends(get_session),
+) -> list[ACLResponse]:
+    grants = await AccessService(session).list_grants(memory_id)
+    return [ACLResponse.model_validate(g) for g in grants]
+
+
+@router.post("/{memory_id}/acl", response_model=ACLResponse, status_code=201)
+async def grant_memory_acl(
+    memory_id: uuid.UUID,
+    data: ACLGrantRequest,
+    session: AsyncSession = Depends(get_session),
+    api_key: APIKey | None = Depends(get_current_api_key),
+) -> ACLResponse:
+    """Grant a user or agent read access to a restricted memory (owner-gated)."""
+    enforce_tenant(api_key, data.actor_user_id)
+    acl = await AccessService(session).grant(
+        memory_id=memory_id,
+        actor_user_id=data.actor_user_id,
+        principal_type=data.principal_type,
+        principal_id=data.principal_id,
+    )
+    return ACLResponse.model_validate(acl)
+
+
+@router.delete("/{memory_id}/acl", status_code=200)
+async def revoke_memory_acl(
+    memory_id: uuid.UUID,
+    data: ACLGrantRequest,
+    session: AsyncSession = Depends(get_session),
+    api_key: APIKey | None = Depends(get_current_api_key),
+) -> dict:
+    enforce_tenant(api_key, data.actor_user_id)
+    revoked = await AccessService(session).revoke(
+        memory_id=memory_id,
+        actor_user_id=data.actor_user_id,
+        principal_type=data.principal_type,
+        principal_id=data.principal_id,
+    )
+    return {"revoked": revoked}
 
 
 @router.post("/stream-search")
