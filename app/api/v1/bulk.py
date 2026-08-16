@@ -54,7 +54,9 @@ async def batch_upsert(
     updated = 0
 
     for item in data.memories:
-        memory, is_new = await svc.upsert(item)
+        # Suppress per-item lifecycle events to avoid a webhook fan-out on a
+        # 100-item batch; callers that need events should use the single endpoint.
+        memory, is_new = await svc.upsert(item, emit=False)
         results.append(
             BatchUpsertResult(
                 memory=MemoryResponse.model_validate(memory),

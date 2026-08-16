@@ -9,6 +9,7 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 from app.schemas.common import OrmBase
+from app.schemas.memory import MemoryResponse
 
 
 class ObservationCreate(BaseModel):
@@ -28,6 +29,31 @@ class ObservationExtractRequest(BaseModel):
     event_id: uuid.UUID
 
 
+class ObservationPromoteRequest(BaseModel):
+    """Promote a candidate observation into a canonical memory.
+
+    The observation's content becomes the memory content; provenance
+    (event/observation/run) is carried onto the memory automatically.
+    """
+
+    memory_key: str
+    memory_type: str = "semantic"  # MemoryType value
+    layer: str = "atom"  # MemoryLayer value
+    scope: str = "user"  # MemoryScope value
+    project_id: uuid.UUID | None = None
+    importance_score: float = Field(default=0.5, ge=0.0, le=1.0)
+    authority_level: int = Field(default=1, ge=1, le=4)
+    # Override the observation's confidence; defaults to the observation's own.
+    confidence: float | None = Field(default=None, ge=0.0, le=1.0)
+    is_contradiction: bool = False
+    # Mark the resulting memory as human-verified provenance.
+    human_verified: bool = False
+
+
+class ObservationRejectRequest(BaseModel):
+    reason: str | None = None
+
+
 class ObservationResponse(OrmBase):
     id: uuid.UUID
     event_id: uuid.UUID
@@ -41,3 +67,11 @@ class ObservationResponse(OrmBase):
     status: str
     memory_id: uuid.UUID | None = None
     created_at: datetime
+
+
+class ObservationPromoteResponse(BaseModel):
+    """Result of promoting an observation: the observation plus its memory."""
+
+    observation: ObservationResponse
+    memory: MemoryResponse
+    memory_created: bool

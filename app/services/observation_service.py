@@ -7,12 +7,16 @@ from collections.abc import Sequence
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.errors import NotFoundError
+from app.core.errors import ConflictError, NotFoundError
+from app.models.memory import Memory
 from app.models.observation import Observation
 from app.repositories.event_repository import EventRepository
 from app.repositories.observation_repository import ObservationRepository
-from app.schemas.observation import ObservationCreate
+from app.schemas.memory import MemoryUpsert
+from app.schemas.observation import ObservationCreate, ObservationPromoteRequest
+from app.services.lifecycle import emit_lifecycle_event
 from app.utils.masking import get_default_engine
+from app.ws import MemoryEventTypes
 
 
 def _mask_if_enabled(text: str | None) -> str | None:
@@ -34,6 +38,7 @@ class ObservationService:
     """
 
     def __init__(self, session: AsyncSession) -> None:
+        self._session = session
         self._repo = ObservationRepository(session)
         self._event_repo = EventRepository(session)
 
@@ -51,7 +56,14 @@ class ObservationService:
             metadata_=data.metadata,
             status="pending",
         )
-        return await self._repo.create(obs)
+        obs = await self._repo.create(obs)
+        await emit_lifecycle_event(
+            self._session,
+            event_type=MemoryEventTypes.OBSERVATION_CREATED,
+            user_id=obs.user_id,
+            data={"observation_id": str(obs.id), "event_id": str(obs.event_id)},
+        )
+        return obs
 
     async def extract_from_event(self, event_id: uuid.UUID) -> list[Observation]:
         """Rule-based extraction of observations from an event.
@@ -104,4 +116,66 @@ class ObservationService:
         obs = await self._repo.get_by_id(observation_id)
         if obs is None:
             raise NotFoundError("Observation", observation_id)
+        return obs
+
+    # ── Promotion: Observation → Memory ─────────────────────────
+    async def promote(
+        self, observation_id: uuid.UUID, req: ObservationPromoteRequest
+    ) -> tuple[Observation, Memory, bool]:
+        """Promote a candidate observation into a canonical memory.
+
+        Completes the Event → Observation → Memory pipeline: the observation's
+        content is upserted as a memory (carrying event/observation/run
+        provenance), the observation is marked ``accepted`` and linked to the
+        resulting memory. Returns ``(observation, memory, memory_created)``.
+        """
+        obs = await self.get_observation(observation_id)
+        if obs.status == "rejected":
+            raise ConflictError(f"Observation {observation_id} was rejected and cannot be promoted")
+
+        # Local import avoids a service-layer import cycle.
+        from app.services.memory_service import MemoryService
+
+        upsert = MemoryUpsert(
+            user_id=obs.user_id,
+            project_id=req.project_id,
+            memory_key=req.memory_key,
+            memory_type=req.memory_type,
+            layer=req.layer,
+            scope=req.scope,
+            content=obs.content,
+            source_type="human_verified" if req.human_verified else obs.source_type,
+            source_event_id=obs.event_id,
+            source_observation_id=obs.id,
+            source_run_id=obs.run_id,
+            confidence=req.confidence if req.confidence is not None else obs.confidence,
+            importance_score=req.importance_score,
+            authority_level=req.authority_level,
+            is_contradiction=req.is_contradiction,
+        )
+        memory, is_new = await MemoryService(self._session).upsert(upsert)
+
+        obs.status = "accepted"
+        obs.memory_id = memory.id
+
+        await emit_lifecycle_event(
+            self._session,
+            event_type="observation.promoted",
+            user_id=obs.user_id,
+            data={
+                "observation_id": str(obs.id),
+                "memory_id": str(memory.id),
+                "memory_created": is_new,
+            },
+            project_id=memory.project_id,
+            memory_id=memory.id,
+        )
+        return obs, memory, is_new
+
+    async def reject(self, observation_id: uuid.UUID, reason: str | None = None) -> Observation:
+        """Reject a candidate observation so it is not promoted."""
+        obs = await self.get_observation(observation_id)
+        obs.status = "rejected"
+        if reason:
+            obs.metadata_ = {**(obs.metadata_ or {}), "rejection_reason": reason}
         return obs
