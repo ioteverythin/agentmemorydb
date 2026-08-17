@@ -31,9 +31,14 @@ class MemoryUpsert(BaseModel):
     authority_level: int = Field(default=1, ge=1, le=4)
     confidence: float = Field(default=0.5, ge=0.0, le=1.0)
     importance_score: float = Field(default=0.5, ge=0.0, le=1.0)
+    # World-validity: when this fact became true. Agents may backdate
+    # ("the user moved to Pune last March"). Defaults to now().
     valid_from: datetime | None = None
     valid_to: datetime | None = None
     expires_at: datetime | None = None
+    # Close the current fact's validity window *without* a replacement — the
+    # fact simply stopped being true. Content fields are ignored.
+    invalidate_only: bool = False
     # Conflict handling
     is_contradiction: bool = False
 
@@ -64,6 +69,9 @@ class MemorySearchRequest(BaseModel):
     include_shared: bool = False
     # Agent this viewer is acting as (for agent-bound "loadout" memories).
     as_agent_id: str | None = None
+    # Point-in-time query: return the fact generations valid at this instant
+    # ("what did the agent believe at T?"). Omit for current facts.
+    as_of: datetime | None = None
     # Optional: attach to a retrieval log
     run_id: uuid.UUID | None = None
 
@@ -129,6 +137,14 @@ class MemoryStatusUpdate(BaseModel):
     status: str  # MemoryStatus value
 
 
+class MemoryInvalidateRequest(BaseModel):
+    """Close a fact's world-validity window with no replacement."""
+
+    # When the fact stopped being true. Defaults to now().
+    valid_to: datetime | None = None
+    reason: str | None = None
+
+
 # ── Context assembly (LLM-ready, budget-capped, injection-safe) ─────
 class ContextAssembleRequest(BaseModel):
     """Assemble a budget-capped, layer-ordered memory context block."""
@@ -148,6 +164,8 @@ class ContextAssembleRequest(BaseModel):
     min_confidence: float | None = None
     min_importance: float | None = None
     use_fulltext: bool = True
+    # Assemble the context as it stood at this instant.
+    as_of: datetime | None = None
     run_id: uuid.UUID | None = None
 
 

@@ -34,6 +34,13 @@ class Settings(BaseSettings):
     hnsw_ef_construction: int = 64  # size of dynamic candidate list during build
     hnsw_ef_search: int = 40  # size of dynamic candidate list during search
 
+    # ── Temporal validity (bitemporal facts) ─────────────────────
+    # When True, retrieval defaults to *currently-valid* facts only
+    # (``valid_to IS NULL``) and honours ``as_of`` for point-in-time queries.
+    # When False (default) behaviour is byte-identical to pre-migration:
+    # ``valid_to IS NULL OR valid_to > now()``.
+    enable_temporal_validity: bool = False
+
     # ── Retrieval ────────────────────────────────────────────────
     default_top_k: int = 10
     # Over-fetch multiplier: how many raw candidates to pull per requested

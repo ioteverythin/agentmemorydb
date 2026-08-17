@@ -6,7 +6,7 @@ import uuid
 from collections.abc import Sequence
 from datetime import UTC, datetime
 
-from sqlalchemy import Float, and_, cast, func, null, or_, select
+from sqlalchemy import Float, and_, cast, exists, func, null, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.memory import Memory
@@ -43,12 +43,18 @@ class MemoryRepository(BaseRepository[Memory]):
         result = await self._session.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def snapshot_version(self, memory: Memory) -> MemoryVersion:
+    async def snapshot_version(
+        self, memory: Memory, *, valid_to: datetime | None = None
+    ) -> MemoryVersion:
         """Create a snapshot of the current memory state before update.
 
         Captures the full governance + validity envelope so a prior version
         can be faithfully restored (content, scores, authority, validity, and
         the pyramid layer/type).
+
+        ``valid_to`` closes the snapshot's world-validity window — pass the new
+        generation's ``valid_from`` so the historical windows tile without gaps
+        or overlaps. Defaults to the memory's own ``valid_to``.
         """
         version = MemoryVersion(
             memory_id=memory.id,
@@ -65,7 +71,7 @@ class MemoryRepository(BaseRepository[Memory]):
             layer=memory.layer,
             authority_level=memory.authority_level,
             valid_from=memory.valid_from,
-            valid_to=memory.valid_to,
+            valid_to=valid_to if valid_to is not None else memory.valid_to,
             expires_at=memory.expires_at,
             created_at=memory.created_at,
             superseded_at=datetime.now(UTC),
@@ -107,6 +113,25 @@ class MemoryRepository(BaseRepository[Memory]):
         result = await self._session.execute(stmt)
         return result.scalars().all()
 
+    @staticmethod
+    def _valid_at(as_of: datetime):
+        """The canonical row's own world-validity window contains ``as_of``."""
+        return and_(
+            Memory.valid_from <= as_of,
+            or_(Memory.valid_to.is_(None), Memory.valid_to > as_of),
+        )
+
+    @staticmethod
+    def _had_version_at(as_of: datetime):
+        """A historical generation of this memory was valid at ``as_of``."""
+        return exists(
+            select(MemoryVersion.id).where(
+                MemoryVersion.memory_id == Memory.id,
+                MemoryVersion.valid_from <= as_of,
+                or_(MemoryVersion.valid_to.is_(None), MemoryVersion.valid_to > as_of),
+            )
+        )
+
     def _base_conditions(
         self,
         *,
@@ -120,6 +145,7 @@ class MemoryRepository(BaseRepository[Memory]):
         min_importance: float | None,
         include_expired: bool,
         access_predicate=None,
+        as_of: datetime | None = None,
     ) -> list:
         # A viewer always sees their own memories; ``access_predicate`` (when
         # supplied by the access layer) ORs in memories shared to them.
@@ -144,6 +170,24 @@ class MemoryRepository(BaseRepository[Memory]):
         now = datetime.now(UTC)
         if not include_expired:
             conditions.append((Memory.expires_at.is_(None)) | (Memory.expires_at > now))
+
+        # ── World-validity filtering ────────────────────────────
+        from app.core.config import settings
+
+        if as_of is not None:
+            # Point-in-time. A row qualifies if *either* its own window contains
+            # ``as_of`` (the current generation was already valid then) *or* one
+            # of its historical generations does — the caller's projection step
+            # then substitutes the right content. Filtering only on the
+            # canonical window here would wrongly drop facts that have been
+            # superseded since ``as_of``, which is the whole point of as-of.
+            conditions.append(or_(self._valid_at(as_of), self._had_version_at(as_of)))
+        elif settings.enable_temporal_validity:
+            # Current facts only — a closed window is history, full stop.
+            conditions.append(Memory.valid_to.is_(None))
+        elif not include_expired:
+            # Legacy (flag-off) semantics, preserved byte-for-byte: an open
+            # future window still counts as current.
             conditions.append((Memory.valid_to.is_(None)) | (Memory.valid_to > now))
         return conditions
 
@@ -179,6 +223,7 @@ class MemoryRepository(BaseRepository[Memory]):
         include_expired: bool = False,
         limit: int = 10,
         access_predicate=None,
+        as_of: datetime | None = None,
     ) -> list[tuple[Memory, float | None]]:
         """Vector / metadata search returning (Memory, vector_similarity|None) pairs."""
 
@@ -193,6 +238,7 @@ class MemoryRepository(BaseRepository[Memory]):
             min_importance=min_importance,
             include_expired=include_expired,
             access_predicate=access_predicate,
+            as_of=as_of,
         )
 
         is_postgres = (
@@ -239,6 +285,7 @@ class MemoryRepository(BaseRepository[Memory]):
         include_expired: bool = False,
         limit: int = 10,
         access_predicate=None,
+        as_of: datetime | None = None,
     ) -> list[tuple[Memory, float]]:
         """Full-text (BM25-style) search over the ``search_vector`` column.
 
@@ -268,6 +315,7 @@ class MemoryRepository(BaseRepository[Memory]):
             min_importance=min_importance,
             include_expired=include_expired,
             access_predicate=access_predicate,
+            as_of=as_of,
         )
         # ``search_vector`` is maintained by a DB trigger (migration 002) and is
         # not a mapped column, so reference it by name. ``websearch_to_tsquery``
@@ -296,8 +344,11 @@ class MemoryRepository(BaseRepository[Memory]):
         status: str | None = None,
         limit: int = 100,
         offset: int = 0,
+        as_of: datetime | None = None,
     ) -> Sequence[Memory]:
         conditions = []
+        if as_of is not None:
+            conditions.append(or_(self._valid_at(as_of), self._had_version_at(as_of)))
         if user_id:
             conditions.append(Memory.user_id == user_id)
         if project_id:

@@ -91,6 +91,7 @@ class RetrievalService:
             include_expired=req.include_expired,
             limit=overfetch,
             access_predicate=access_predicate,
+            as_of=req.as_of,
         )
 
         # ── Sparse (full-text / BM25) candidates ────────────────
@@ -109,6 +110,7 @@ class RetrievalService:
                 include_expired=req.include_expired,
                 limit=overfetch,
                 access_predicate=access_predicate,
+                as_of=req.as_of,
             )
 
         # ── Merge candidate pools ───────────────────────────────
@@ -167,14 +169,27 @@ class RetrievalService:
         results: list[MemorySearchResult] = []
         log_items: list[RetrievalLogItem] = []
 
+        # ── Point-in-time projection ────────────────────────────
+        # Ranking finds the *fact slot*; if as_of predates a row's current
+        # generation, substitute the generation that was valid then. A memory
+        # with no generation valid at as_of is dropped from the results.
+        projected_by_id: dict = {}
+        if req.as_of is not None:
+            from app.services.temporal_service import TemporalService
+
+            temporal = TemporalService(self._session)
+            for view in await temporal.project_as_of([m for m, _, _ in scored], req.as_of):
+                projected_by_id[view.id] = view
+
         for rank, (memory, final, breakdown) in enumerate(scored, start=1):
+            if req.as_of is not None:
+                view = projected_by_id.get(memory.id)
+                if view is None:
+                    continue
+            else:
+                view = MemoryResponse.model_validate(memory)
             score_bd = ScoreBreakdown(**breakdown) if req.explain else None
-            results.append(
-                MemorySearchResult(
-                    memory=MemoryResponse.model_validate(memory),
-                    score=score_bd,
-                )
-            )
+            results.append(MemorySearchResult(memory=view, score=score_bd))
             log_items.append(
                 RetrievalLogItem(
                     memory_id=memory.id,

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import uuid
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import StreamingResponse
@@ -15,6 +16,7 @@ from app.models.api_key import APIKey
 from app.schemas.memory import (
     ContextAssembleRequest,
     ContextAssembleResponse,
+    MemoryInvalidateRequest,
     MemoryResponse,
     MemorySearchRequest,
     MemorySearchResponse,
@@ -28,6 +30,7 @@ from app.services.access_service import AccessService
 from app.services.context_assembly_service import ContextAssemblyService
 from app.services.memory_service import MemoryService
 from app.services.retrieval_service import RetrievalService
+from app.services.temporal_service import TemporalService
 
 router = APIRouter()
 
@@ -227,6 +230,9 @@ async def list_memories(
     memory_type: str | None = Query(default=None),
     scope: str | None = Query(default=None),
     status: str | None = Query(default=None),
+    as_of: datetime | None = Query(
+        default=None, description="Point-in-time: list the fact generations valid at this instant."
+    ),
     limit: int = Query(default=100, ge=1, le=1000),
     offset: int = Query(default=0, ge=0),
     session: AsyncSession = Depends(get_session),
@@ -240,8 +246,43 @@ async def list_memories(
         status=status,
         limit=limit,
         offset=offset,
+        as_of=as_of,
     )
+    if as_of is not None:
+        return await TemporalService(session).project_as_of(memories, as_of)
     return [MemoryResponse.model_validate(m) for m in memories]
+
+
+@router.get("/{memory_id}/timeline")
+async def get_memory_timeline(
+    memory_id: uuid.UUID,
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    """The full supersession chain for a memory, oldest generation first.
+
+    Each generation carries its world-validity window, when the system recorded
+    it, and a diff against the previous generation.
+    """
+    return await TemporalService(session).timeline(memory_id)
+
+
+@router.post("/{memory_id}/invalidate", response_model=MemoryResponse)
+async def invalidate_memory(
+    memory_id: uuid.UUID,
+    data: MemoryInvalidateRequest,
+    session: AsyncSession = Depends(get_session),
+    api_key: APIKey | None = Depends(get_current_api_key),
+) -> MemoryResponse:
+    """Close a fact's validity window with no replacement — it stopped being true.
+
+    The memory remains queryable via ``as_of`` and ``/timeline``, but drops out
+    of current-fact retrieval.
+    """
+    svc = MemoryService(session)
+    memory = await svc.get_memory(memory_id)
+    enforce_tenant(api_key, memory.user_id)
+    memory = await svc.invalidate(memory_id, valid_to=data.valid_to)
+    return MemoryResponse.model_validate(memory)
 
 
 @router.get("/{memory_id}/versions", response_model=list[MemoryVersionResponse])

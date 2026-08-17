@@ -10,7 +10,7 @@ from datetime import UTC, datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import NotFoundError
-from app.core.metrics import record_upsert
+from app.core.metrics import record_invalidation, record_supersession, record_upsert
 from app.models.memory import Memory
 from app.models.memory_link import MemoryLink
 from app.models.memory_version import MemoryVersion
@@ -100,6 +100,12 @@ class MemoryService:
         )
 
         if existing is not None:
+            # ── Invalidate-only: close the window, no replacement ──
+            if data.invalidate_only:
+                await self._invalidate(existing, valid_to=data.valid_from or datetime.now(UTC))
+                record_upsert("invalidate")
+                return existing, False
+
             # Skip update if content is identical
             if existing.content_hash == content_hash:
                 # Touch updated_at only
@@ -108,13 +114,19 @@ class MemoryService:
                 record_upsert("skip_identical")
                 return existing, False
 
+            # ── Supersession ──────────────────────────────────────
+            # The new generation becomes valid at ``valid_from`` (agents may
+            # backdate). The prior generation's world-validity window closes at
+            # exactly that instant, so historical windows tile without gaps.
+            new_valid_from = data.valid_from or datetime.now(UTC)
+            superseded_version = existing.version
+
             # Snapshot previous version. In-place versioning means the prior
             # content is preserved as a MemoryVersion row (with its full
             # governance envelope), which is the authoritative record of a
             # contradiction/supersession — no self-referential link needed.
-            snapshot = await self._repo.snapshot_version(existing)
-            if data.is_contradiction:
-                snapshot.status = "superseded"
+            snapshot = await self._repo.snapshot_version(existing, valid_to=new_valid_from)
+            snapshot.status = "superseded"
 
             # Update canonical row
             existing.content = data.content
@@ -131,19 +143,33 @@ class MemoryService:
             existing.confidence = data.confidence
             existing.importance_score = data.importance_score
             existing.recency_score = 1.0
-            existing.valid_from = data.valid_from or existing.valid_from
+            existing.valid_from = new_valid_from
             existing.valid_to = data.valid_to
             existing.expires_at = data.expires_at
             existing.version += 1
             existing.updated_at = datetime.now(UTC)
 
             record_upsert("update")
+            record_supersession()
             if emit:
+                payload = memory_event_payload(existing)
                 await emit_lifecycle_event(
                     self._session,
                     event_type=MemoryEventTypes.MEMORY_UPDATED,
                     user_id=existing.user_id,
-                    data=memory_event_payload(existing),
+                    data=payload,
+                    project_id=existing.project_id,
+                    memory_id=existing.id,
+                )
+                await emit_lifecycle_event(
+                    self._session,
+                    event_type=MemoryEventTypes.MEMORY_SUPERSEDED,
+                    user_id=existing.user_id,
+                    data={
+                        **payload,
+                        "superseded_version": superseded_version,
+                        "valid_from": new_valid_from.isoformat(),
+                    },
                     project_id=existing.project_id,
                     memory_id=existing.id,
                 )
@@ -188,6 +214,39 @@ class MemoryService:
                 )
             return memory, True
 
+    # ── Invalidation (close a validity window, no replacement) ──
+    async def _invalidate(self, memory: Memory, *, valid_to: datetime, emit: bool = True) -> Memory:
+        """Close ``memory``'s world-validity window without a replacement.
+
+        The fact stopped being true. The final generation is snapshotted with
+        the closed window and the canonical row is marked ``stale`` so it drops
+        out of current-fact retrieval while remaining queryable as-of.
+        """
+        await self._repo.snapshot_version(memory, valid_to=valid_to)
+        memory.valid_to = valid_to
+        memory.status = "stale"
+        memory.updated_at = datetime.now(UTC)
+        record_invalidation()
+        if emit:
+            await emit_lifecycle_event(
+                self._session,
+                event_type=MemoryEventTypes.MEMORY_SUPERSEDED,
+                user_id=memory.user_id,
+                data={
+                    **memory_event_payload(memory),
+                    "invalidated": True,
+                    "valid_to": valid_to.isoformat(),
+                },
+                project_id=memory.project_id,
+                memory_id=memory.id,
+            )
+        return memory
+
+    async def invalidate(self, memory_id: uuid.UUID, *, valid_to: datetime | None = None) -> Memory:
+        """Public invalidation by id — the fact is no longer true."""
+        memory = await self.get_memory(memory_id)
+        return await self._invalidate(memory, valid_to=valid_to or datetime.now(UTC))
+
     # ── Read operations ─────────────────────────────────────────
     async def get_memory(self, memory_id: uuid.UUID) -> Memory:
         memory = await self._repo.get_by_id(memory_id)
@@ -205,8 +264,9 @@ class MemoryService:
         status: str | None = None,
         limit: int = 100,
         offset: int = 0,
+        as_of: datetime | None = None,
     ) -> Sequence[Memory]:
-        """List memories with optional filters."""
+        """List memories with optional filters (``as_of`` = point-in-time)."""
         return await self._repo.list_filtered(
             user_id=user_id,
             project_id=project_id,
@@ -215,6 +275,7 @@ class MemoryService:
             status=status,
             limit=limit,
             offset=offset,
+            as_of=as_of,
         )
 
     # ── Status management ───────────────────────────────────────

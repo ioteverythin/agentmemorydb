@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import DateTime, Float, Index, Integer, String, Text, func
+from sqlalchemy import DateTime, Float, ForeignKey, Index, Integer, String, Text, func, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -61,9 +61,20 @@ class Memory(Base):
     importance_score: Mapped[float] = mapped_column(Float, nullable=False, default=0.5)
     recency_score: Mapped[float] = mapped_column(Float, nullable=False, default=1.0)
 
-    # ── Validity window ─────────────────────────────────────────
-    valid_from: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # ── Validity window (world time — see docs/temporal-model.md) ─
+    # ``valid_from``/``valid_to`` bound when the fact was true *in the world*.
+    # ``valid_to IS NULL`` marks the currently-valid generation. Prior
+    # generations live in ``memory_versions`` with closed windows, so the
+    # canonical row keeps a stable id across supersessions.
+    valid_from: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
     valid_to: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Set only when a *different* canonical row replaces this one (key rename
+    # or an explicit replacement); in-place supersession uses the version chain.
+    superseded_by: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("memories.id", ondelete="SET NULL"), nullable=True
+    )
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     last_verified_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
@@ -111,5 +122,14 @@ class Memory(Base):
         Index("ix_memories_user_key", "user_id", "memory_key"),
         Index("ix_memories_scope_status", "scope", "status"),
         Index("ix_memories_payload_gin", "payload", postgresql_using="gin"),
+        # Fast current-fact lookup: the hot path for upsert and default search.
+        Index(
+            "ix_memories_current",
+            "user_id",
+            "memory_key",
+            postgresql_where=text("valid_to IS NULL"),
+        ),
+        # As-of range scans.
+        Index("ix_memories_user_validity", "user_id", "valid_from", "valid_to"),
         _build_vector_index.__func__(),  # type: ignore[attr-defined]
     )

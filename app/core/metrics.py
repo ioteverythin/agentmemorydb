@@ -53,6 +53,18 @@ if PROMETHEUS_AVAILABLE:
         registry=REGISTRY,
     )
 
+    MEMORY_SUPERSESSIONS = Counter(
+        "engramdb_memory_supersessions_total",
+        "Total fact supersessions (a validity window closed and a new generation began)",
+        registry=REGISTRY,
+    )
+
+    MEMORY_INVALIDATIONS = Counter(
+        "engramdb_memory_invalidations_total",
+        "Total fact invalidations (validity window closed with no replacement)",
+        registry=REGISTRY,
+    )
+
     MEMORY_SEARCHES = Counter(
         "engramdb_memory_searches_total",
         "Total memory search operations",
@@ -128,6 +140,18 @@ def record_upsert(action: str) -> None:
     """Record a memory upsert metric."""
     if PROMETHEUS_AVAILABLE:
         MEMORY_UPSERTS.labels(action=action).inc()
+
+
+def record_supersession() -> None:
+    """Record a fact supersession (validity window closed, new generation began)."""
+    if PROMETHEUS_AVAILABLE:
+        MEMORY_SUPERSESSIONS.inc()
+
+
+def record_invalidation() -> None:
+    """Record a fact invalidation (window closed with no replacement)."""
+    if PROMETHEUS_AVAILABLE:
+        MEMORY_INVALIDATIONS.inc()
 
 
 def record_search(strategy: str) -> None:

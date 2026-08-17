@@ -76,6 +76,7 @@ class ContextAssemblyService:
             min_confidence=req.min_confidence,
             min_importance=req.min_importance,
             use_fulltext=req.use_fulltext,
+            as_of=req.as_of,
             explain=True,
             run_id=req.run_id,
         )
