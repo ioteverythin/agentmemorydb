@@ -6,7 +6,7 @@ import uuid
 from collections.abc import Sequence
 from datetime import UTC, datetime
 
-from sqlalchemy import Float, and_, cast, func, null, select
+from sqlalchemy import Float, and_, cast, func, null, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.memory import Memory
@@ -119,9 +119,13 @@ class MemoryRepository(BaseRepository[Memory]):
         min_confidence: float | None,
         min_importance: float | None,
         include_expired: bool,
+        access_predicate=None,
     ) -> list:
+        # A viewer always sees their own memories; ``access_predicate`` (when
+        # supplied by the access layer) ORs in memories shared to them.
+        owner_clause = Memory.user_id == user_id
         conditions = [
-            Memory.user_id == user_id,
+            owner_clause if access_predicate is None else or_(owner_clause, access_predicate),
             Memory.status == status,
         ]
         if project_id is not None:
@@ -174,6 +178,7 @@ class MemoryRepository(BaseRepository[Memory]):
         min_importance: float | None = None,
         include_expired: bool = False,
         limit: int = 10,
+        access_predicate=None,
     ) -> list[tuple[Memory, float | None]]:
         """Vector / metadata search returning (Memory, vector_similarity|None) pairs."""
 
@@ -187,6 +192,7 @@ class MemoryRepository(BaseRepository[Memory]):
             min_confidence=min_confidence,
             min_importance=min_importance,
             include_expired=include_expired,
+            access_predicate=access_predicate,
         )
 
         is_postgres = (
@@ -232,6 +238,7 @@ class MemoryRepository(BaseRepository[Memory]):
         min_importance: float | None = None,
         include_expired: bool = False,
         limit: int = 10,
+        access_predicate=None,
     ) -> list[tuple[Memory, float]]:
         """Full-text (BM25-style) search over the ``search_vector`` column.
 
@@ -260,6 +267,7 @@ class MemoryRepository(BaseRepository[Memory]):
             min_confidence=min_confidence,
             min_importance=min_importance,
             include_expired=include_expired,
+            access_predicate=access_predicate,
         )
         # ``search_vector`` is maintained by a DB trigger (migration 002) and is
         # not a mapped column, so reference it by name. ``websearch_to_tsquery``

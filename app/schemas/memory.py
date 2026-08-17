@@ -59,6 +59,11 @@ class MemorySearchRequest(BaseModel):
     # Fuse dense (vector) and sparse (full-text/BM25) rankings via RRF when a
     # query_text is present and the backend supports full-text search.
     use_fulltext: bool = True
+    # Also retrieve memories shared to this viewer (team / restricted / agent),
+    # not just their own. Off by default so single-user behaviour is unchanged.
+    include_shared: bool = False
+    # Agent this viewer is acting as (for agent-bound "loadout" memories).
+    as_agent_id: str | None = None
     # Optional: attach to a retrieval log
     run_id: uuid.UUID | None = None
 
@@ -85,6 +90,9 @@ class MemoryResponse(OrmBase):
     memory_type: str
     scope: str
     layer: str = "atom"
+    visibility: str = "private"
+    team_id: uuid.UUID | None = None
+    agent_id: str | None = None
     content: str
     content_hash: str
     payload: dict[str, Any] | None = None

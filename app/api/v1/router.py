@@ -24,6 +24,7 @@ from app.api.v1 import (
     runs,
     scheduler,
     tasks,
+    teams,
     users,
     webhooks,
 )
@@ -33,6 +34,7 @@ api_router = APIRouter()
 api_router.include_router(health.router, tags=["health"])
 api_router.include_router(users.router, prefix="/users", tags=["users"])
 api_router.include_router(projects.router, prefix="/projects", tags=["projects"])
+api_router.include_router(teams.router, prefix="/teams", tags=["teams"])
 api_router.include_router(runs.router, prefix="/runs", tags=["runs"])
 api_router.include_router(events.router, prefix="/events", tags=["events"])
 api_router.include_router(observations.router, prefix="/observations", tags=["observations"])

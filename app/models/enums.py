@@ -66,6 +66,35 @@ class MemoryScope(enum.StrEnum):
     GLOBAL = "global"
 
 
+class MemoryVisibility(enum.StrEnum):
+    """Access-control visibility of a memory (independent of pyramid layer).
+
+    - ``private``    — only the owner can read it.
+    - ``team``       — every member of ``team_id`` can read it.
+    - ``restricted`` — only principals named in an explicit ACL grant.
+    - ``agent``      — only the bound ``agent_id``, within ``team_id``.
+    """
+
+    PRIVATE = "private"
+    TEAM = "team"
+    RESTRICTED = "restricted"
+    AGENT = "agent"
+
+
+class TeamRole(enum.StrEnum):
+    """A member's role within a team."""
+
+    ADMIN = "admin"
+    MEMBER = "member"
+
+
+class ACLPrincipal(enum.StrEnum):
+    """The kind of principal an ACL grant targets."""
+
+    USER = "user"
+    AGENT = "agent"
+
+
 class MemoryLayer(enum.StrEnum):
     """Distillation layer in the memory pyramid.
 

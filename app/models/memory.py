@@ -27,6 +27,16 @@ class Memory(Base):
     memory_key: Mapped[str] = mapped_column(String(512), nullable=False, index=True)
     scope: Mapped[str] = mapped_column(String(32), nullable=False, default="user", index=True)
 
+    # ── Sharing / access control ────────────────────────────────
+    # Visibility governs who (besides the owner) may read this memory.
+    visibility: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="private", index=True
+    )
+    # Team this memory belongs to when shared (team/restricted/agent visibility).
+    team_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True, index=True)
+    # Bound agent identifier when visibility == "agent" (an agent "loadout").
+    agent_id: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
+
     # ── Content ─────────────────────────────────────────────────
     memory_type: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
     # Distillation layer in the memory pyramid (raw/atom/scenario/persona).
