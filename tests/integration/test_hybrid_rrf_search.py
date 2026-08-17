@@ -58,8 +58,15 @@ async def test_strategy_is_hybrid_rrf_with_query(integration_session):
 
 @pytest.mark.asyncio
 async def test_fulltext_finds_lexical_match(integration_session):
-    """A rare exact term is found via BM25/FTS even though dummy embeddings are
-    random (i.e. the vector signal alone would not reliably surface it)."""
+    """A rare exact term is surfaced by BM25/FTS.
+
+    Tests are seeded with *random* dummy embeddings, so the fused ranking's
+    vector component is noise — we therefore assert on the deterministic FTS
+    path directly (it ranks the exact lexical match first), and separately that
+    the fused search attaches an rrf_score to that memory. Using top_k that
+    covers all rows keeps the second assertion independent of the random vector
+    ordering.
+    """
     uid = await _user(integration_session)
     svc = MemoryService(integration_session)
     await _store(svc, uid, "target", "The incident postmortem referenced kubernetes zalgo-token.")
@@ -67,15 +74,23 @@ async def test_fulltext_finds_lexical_match(integration_session):
         await _store(svc, uid, f"noise{i}", f"Some unrelated note number {i} about coffee.")
     await integration_session.flush()
 
-    retr = RetrievalService(integration_session)
-    resp = await retr.search(
-        MemorySearchRequest(user_id=uid, query_text="zalgo-token", top_k=5, explain=True)
+    # 1. Full-text search alone ranks the exact lexical match first (deterministic).
+    from app.repositories.memory_repository import MemoryRepository
+
+    fts = await MemoryRepository(integration_session).search_fulltext(
+        user_id=uid, query_text="zalgo-token", limit=5
     )
-    keys = [r.memory.memory_key for r in resp.results]
-    assert "target" in keys
-    # The fused rrf_score is exposed in the breakdown.
-    top = next(r for r in resp.results if r.memory.memory_key == "target")
-    assert top.score is not None and top.score.rrf_score is not None
+    assert fts, "FTS should match the rare term"
+    assert fts[0][0].memory_key == "target"
+
+    # 2. In the fused (RRF) search the match carries an rrf_score. top_k covers
+    #    every row so presence doesn't depend on the random vector ranking.
+    resp = await RetrievalService(integration_session).search(
+        MemorySearchRequest(user_id=uid, query_text="zalgo-token", top_k=20, explain=True)
+    )
+    assert resp.strategy == "hybrid_rrf"
+    target = next(r for r in resp.results if r.memory.memory_key == "target")
+    assert target.score is not None and target.score.rrf_score is not None
 
 
 @pytest.mark.asyncio
