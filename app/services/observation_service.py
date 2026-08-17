@@ -136,10 +136,20 @@ class ObservationService:
         # Local import avoids a service-layer import cycle.
         from app.services.memory_service import MemoryService
 
+        # ── Contradiction resolution (opt-in) ──────────────────
+        # Resolve the incoming fact against existing memories *before* writing,
+        # so a conflict supersedes the old value or is recorded as disputed —
+        # never silently coexisting with it.
+        decision = await self._resolve_contradiction(obs, req)
+        memory_key = req.memory_key
+        if decision is not None and decision.action == "supersede" and decision.target is not None:
+            # Write against the incumbent's key so Feature 1 supersession fires.
+            memory_key = decision.target.memory_key
+
         upsert = MemoryUpsert(
             user_id=obs.user_id,
             project_id=req.project_id,
-            memory_key=req.memory_key,
+            memory_key=memory_key,
             memory_type=req.memory_type,
             layer=req.layer,
             scope=req.scope,
@@ -155,6 +165,15 @@ class ObservationService:
         )
         memory, is_new = await MemoryService(self._session).upsert(upsert)
 
+        # ── Disputed outcome: keep both, link them, flag the newcomer ──
+        if decision is not None and decision.action == "dispute" and decision.target is not None:
+            memory.status = "disputed"
+            await self._repo_link(
+                source_id=memory.id,
+                target_id=decision.target.id,
+                description=decision.reason or "contradicts a higher-confidence memory",
+            )
+
         obs.status = "accepted"
         obs.memory_id = memory.id
 
@@ -166,11 +185,58 @@ class ObservationService:
                 "observation_id": str(obs.id),
                 "memory_id": str(memory.id),
                 "memory_created": is_new,
+                "contradiction": decision.verdict.value if decision is not None else None,
             },
             project_id=memory.project_id,
             memory_id=memory.id,
         )
         return obs, memory, is_new
+
+    # ── Contradiction helpers ───────────────────────────────────
+    async def _resolve_contradiction(self, obs: Observation, req: ObservationPromoteRequest):
+        """Classify the incoming observation against existing memories.
+
+        Returns ``None`` when the feature is disabled, so the promotion path is
+        untouched by default.
+        """
+        from app.core.config import settings
+
+        if not settings.enable_contradiction_detection:
+            return None
+
+        from app.core.metrics import record_contradiction
+        from app.services.contradiction_service import ContradictionService
+
+        embedding = None
+        try:
+            from app.utils.embedding_provider import get_embedding_provider
+
+            vectors = await get_embedding_provider().embed([obs.content])
+            embedding = vectors[0] if vectors else None
+        except Exception:  # pragma: no cover - provider failure is non-fatal
+            embedding = None
+
+        decision = await ContradictionService(self._session).evaluate(
+            user_id=obs.user_id,
+            memory_key=req.memory_key,
+            content=obs.content,
+            confidence=req.confidence if req.confidence is not None else obs.confidence,
+            embedding=embedding,
+            project_id=req.project_id,
+        )
+        if decision.action != "none":
+            record_contradiction(decision.verdict.value)
+        return decision
+
+    async def _repo_link(self, *, source_id: uuid.UUID, target_id: uuid.UUID, description: str):
+        from app.repositories.memory_repository import MemoryRepository
+
+        return await MemoryRepository(self._session).create_link(
+            source_id=source_id,
+            target_id=target_id,
+            link_type="contradicts",
+            description=description,
+        )
 
     async def reject(self, observation_id: uuid.UUID, reason: str | None = None) -> Observation:
         """Reject a candidate observation so it is not promoted."""

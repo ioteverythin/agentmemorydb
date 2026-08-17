@@ -34,6 +34,19 @@ class Settings(BaseSettings):
     hnsw_ef_construction: int = 64  # size of dynamic candidate list during build
     hnsw_ef_search: int = 40  # size of dynamic candidate list during search
 
+    # ── LLM provider (optional; powers contradiction + reflection) ─
+    llm_provider: str = "none"  # none | openai
+    llm_model: str = "gpt-4o-mini"
+    llm_base_url: str | None = None  # set for an OpenAI-compatible gateway
+    llm_temperature: float = 0.0
+    llm_timeout_seconds: float = 30.0
+
+    # ── Contradiction detection ──────────────────────────────────
+    enable_contradiction_detection: bool = False
+    contradiction_strategy: str = "heuristic"  # heuristic | llm
+    contradiction_similarity_threshold: float = 0.85
+    contradiction_candidate_top_k: int = 5
+
     # ── Temporal validity (bitemporal facts) ─────────────────────
     # When True, retrieval defaults to *currently-valid* facts only
     # (``valid_to IS NULL``) and honours ``as_of`` for point-in-time queries.

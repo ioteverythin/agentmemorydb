@@ -65,6 +65,13 @@ if PROMETHEUS_AVAILABLE:
         registry=REGISTRY,
     )
 
+    MEMORY_CONTRADICTIONS = Counter(
+        "engramdb_memory_contradictions_total",
+        "Contradictions detected during observation promotion",
+        ["verdict"],  # same_fact_updated | contradicts
+        registry=REGISTRY,
+    )
+
     MEMORY_SEARCHES = Counter(
         "engramdb_memory_searches_total",
         "Total memory search operations",
@@ -152,6 +159,12 @@ def record_invalidation() -> None:
     """Record a fact invalidation (window closed with no replacement)."""
     if PROMETHEUS_AVAILABLE:
         MEMORY_INVALIDATIONS.inc()
+
+
+def record_contradiction(verdict: str) -> None:
+    """Record a detected contradiction by verdict."""
+    if PROMETHEUS_AVAILABLE:
+        MEMORY_CONTRADICTIONS.labels(verdict=verdict).inc()
 
 
 def record_search(strategy: str) -> None:

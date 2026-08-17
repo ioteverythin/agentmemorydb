@@ -22,6 +22,9 @@ class MemoryStatus(enum.StrEnum):
     STALE = "stale"
     ARCHIVED = "archived"
     RETRACTED = "retracted"
+    # Conflicts with a higher-confidence memory; retained and linked via a
+    # ``contradicts`` edge, but excluded from default retrieval and assembly.
+    DISPUTED = "disputed"
 
 
 class SourceType(enum.StrEnum):
