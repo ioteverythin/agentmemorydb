@@ -115,12 +115,18 @@ The GIF above is real output from the embeddable client. Run it yourself with
 zero configuration (in-memory SQLite, no server, no API key):
 
 ```bash
-pip install engramdb        # or: pip install -e . from a checkout
+pip install engramdb        # the embeddable client — numpy only
 python examples/demo.py
 ```
 
 It walks through short-term memory, promotion to long-term, semantic recall,
 versioning, and context assembly.
+
+> **Two distributions, one API.** `pip install engramdb` is the lightweight
+> **embeddable client** (SQLite, zero config). To talk to a running server,
+> `pip install "engramdb[remote]"` and use `engramdb.HttpClient`. The **server**
+> itself is a separate package, `engramdb-server` (usually run via
+> `docker compose up`).
 
 ### 1. Clone & Start
 

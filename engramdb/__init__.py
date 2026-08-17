@@ -29,14 +29,25 @@ Both clients expose the **same** methods: ``upsert``, ``search``,
 __version__ = "0.1.0"
 
 from engramdb.client import Client
-from engramdb.http_client import HttpClient
-from engramdb.types import Memory, MemoryVersion, SearchResult
 from engramdb.embeddings import DummyEmbedding, OpenAIEmbedding
 from engramdb.memory_manager import (
-    ShortTermMemory,
     LongTermMemory,
     MemoryManager,
+    ShortTermMemory,
 )
+from engramdb.types import Memory, MemoryVersion, SearchResult
+
+
+def __getattr__(name: str):
+    # ``HttpClient`` (remote mode) needs httpx, which is an optional extra
+    # (``pip install engramdb[remote]``). Import it lazily so embedded mode
+    # works with numpy alone and ``import engramdb`` never pulls httpx.
+    if name == "HttpClient":
+        from engramdb.http_client import HttpClient
+
+        return HttpClient
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
 
 __all__ = [
     # Clients

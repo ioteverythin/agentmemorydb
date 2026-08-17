@@ -941,10 +941,10 @@ ws.on('memory.created', (data) => console.log(data));
 ## 27. CLI Tool
 
 ```bash
-engramdb health                           # Health check
-engramdb stats                            # Memory statistics
-engramdb export --user-id UUID -o out.json   # Export to JSON
-engramdb import data.json                 # Import from JSON
+engramdb-server health                           # Health check
+engramdb-server stats                            # Memory statistics
+engramdb-server export --user-id UUID -o out.json   # Export to JSON
+engramdb-server import data.json                 # Import from JSON
 engramdb archive-stale --days 90          # Archive old memories
 engramdb consolidate                      # Run dedup + merge
 engramdb recompute-recency                # Refresh recency scores
