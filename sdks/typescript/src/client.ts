@@ -21,6 +21,8 @@ import type {
   ConsolidateResponse,
   ExportResponse,
   HealthResponse,
+  ForgettingLogEntry,
+  ErasureResponse,
 } from './types';
 
 // ── HTTP Helper ─────────────────────────────────────────────────
@@ -97,7 +99,7 @@ class MemoriesClient {
 
   /** Create or update a memory (versioned, deduplicated). */
   async upsert(input: MemoryUpsertInput): Promise<Memory> {
-    return this.http.post('/memories', {
+    return this.http.post('/memories/upsert', {
       user_id: input.userId,
       memory_key: input.memoryKey,
       content: input.content,
@@ -114,6 +116,7 @@ class MemoriesClient {
       valid_to: input.validTo,
       expires_at: input.expiresAt,
       is_contradiction: input.isContradiction ?? false,
+      pinned: input.pinned,
     });
   }
 
@@ -132,6 +135,7 @@ class MemoriesClient {
       min_importance: input.minImportance,
       include_expired: input.includeExpired ?? false,
       explain: input.explain ?? false,
+      as_of: input.asOf,
     });
   }
 
@@ -148,6 +152,49 @@ class MemoriesClient {
   /** Get version history for a memory. */
   async versions(memoryId: string): Promise<unknown[]> {
     return this.http.get(`/memories/${memoryId}/versions`);
+  }
+
+  /** The full supersession chain for a memory, oldest generation first. */
+  async timeline(memoryId: string): Promise<unknown> {
+    return this.http.get(`/memories/${memoryId}/timeline`);
+  }
+
+  /** Close a fact's validity window with no replacement (it stopped being true). */
+  async invalidate(memoryId: string, validTo?: string): Promise<Memory> {
+    return this.http.post(`/memories/${memoryId}/invalidate`, { valid_to: validTo });
+  }
+
+  /** Pin (or unpin) a memory so it is never decayed or auto-archived. */
+  async pin(memoryId: string, pinned = true): Promise<Memory> {
+    return this.http.patch(`/memories/${memoryId}/pin`, { pinned });
+  }
+
+  /**
+   * Hard-erase a memory. Irreversible, and requires an API key with the
+   * `erase` scope. A forgetting-log tombstone keeps the content's SHA-256.
+   */
+  async erase(memoryId: string, reason?: string): Promise<ErasureResponse> {
+    const query = reason ? `&reason=${encodeURIComponent(reason)}` : '';
+    return this.http.delete(`/memories/${memoryId}?mode=erase${query}`);
+  }
+}
+
+class ForgettingClient {
+  constructor(private http: HttpClient) {}
+
+  /** The forgetting audit trail — decay, expiry, and erasure decisions. */
+  async log(params?: { userId?: string; limit?: number }): Promise<ForgettingLogEntry[]> {
+    const query = new URLSearchParams();
+    if (params?.userId) query.set('user_id', params.userId);
+    if (params?.limit) query.set('limit', String(params.limit));
+    const qs = query.toString();
+    return this.http.get(`/forgetting/log${qs ? `?${qs}` : ''}`);
+  }
+
+  /** Erase every memory for a user (GDPR right-to-be-forgotten). */
+  async eraseUser(userId: string, reason?: string): Promise<ErasureResponse> {
+    const query = reason ? `&reason=${encodeURIComponent(reason)}` : '';
+    return this.http.delete(`/users/${userId}/memories?mode=erase${query}`);
   }
 }
 
@@ -265,6 +312,8 @@ export class EngramDB {
   public consolidation: ConsolidationClient;
   /** Import/export operations. */
   public data: DataClient;
+  /** Forgetting audit trail and erasure. */
+  public forgetting: ForgettingClient;
 
   constructor(config: EngramDBConfig) {
     this.http = new HttpClient(config);
@@ -274,6 +323,7 @@ export class EngramDB {
     this.graph = new GraphClient(this.http);
     this.consolidation = new ConsolidationClient(this.http);
     this.data = new DataClient(this.http);
+    this.forgetting = new ForgettingClient(this.http);
   }
 
   /** Health check. */

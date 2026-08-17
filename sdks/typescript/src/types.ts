@@ -36,6 +36,8 @@ export interface Memory {
   source_observation_id: string | null;
   source_run_id: string | null;
   status: MemoryStatus;
+  /** Pinned memories are exempt from importance decay and retention archival. */
+  pinned: boolean;
   authority_level: number;
   confidence: number;
   importance_score: number;
@@ -66,6 +68,8 @@ export interface MemoryUpsertInput {
   validTo?: string;
   expiresAt?: string;
   isContradiction?: boolean;
+  /** Pin this memory so it is never decayed or auto-archived. */
+  pinned?: boolean;
 }
 
 export interface MemorySearchInput {
@@ -81,6 +85,8 @@ export interface MemorySearchInput {
   minImportance?: number;
   includeExpired?: boolean;
   explain?: boolean;
+  /** Point-in-time query: the facts valid at this ISO-8601 instant. */
+  asOf?: string;
 }
 
 // ── Score Breakdown ─────────────────────────────────────────────
@@ -182,4 +188,28 @@ export interface ExportResponse {
   version: string;
   exported_at: string;
   data: unknown;
+}
+
+// ── Forgetting ──────────────────────────────────────────────────
+
+/** One recorded forgetting decision (decay, expiry, or erasure). */
+export interface ForgettingLogEntry {
+  id: string;
+  memory_id: string;
+  user_id: string;
+  /** decayed | decayed_archive | expired | user_erasure | admin_erasure */
+  action: string;
+  reason: string | null;
+  triggered_by: string | null;
+  /** SHA-256 of erased content — proves what was deleted without keeping it. */
+  content_hash: string | null;
+  occurred_at: string;
+}
+
+/** Receipt for a hard erasure (GDPR right-to-be-forgotten). */
+export interface ErasureResponse {
+  erased: number;
+  action: string;
+  memory_id: string | null;
+  user_id: string | null;
 }

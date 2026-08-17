@@ -66,8 +66,10 @@ class MaintenanceScheduler:
     1. consolidate_duplicates — find & merge near-duplicate memories
     2. archive_stale — archive memories that haven't been accessed
     3. recompute_recency — refresh recency scores for active memories
-    4. cleanup_expired — retract memories past their expires_at
+    4. cleanup_expired — retract memories past their expires_at (audited)
     5. prune_access_logs — remove old access log entries
+    6. distill_memories — roll atoms up the memory pyramid
+    7. decay_importance — Ebbinghaus decay for unused memories (opt-in)
     """
 
     def __init__(self) -> None:
@@ -113,6 +115,14 @@ class MaintenanceScheduler:
                 handler=self._distill_memories,
                 interval_seconds=settings.scheduler_distillation_interval,
                 enabled=settings.scheduler_enable_distillation,
+            ),
+            ScheduledJob(
+                name="decay_importance",
+                handler=self._decay_importance,
+                interval_seconds=settings.scheduler_decay_interval,
+                # Double-gated: the job is only due when the *feature* flag is on
+                # too, so a default deployment never decays anything.
+                enabled=settings.scheduler_enable_decay and settings.enable_decay,
             ),
         ]
 
@@ -282,24 +292,24 @@ class MaintenanceScheduler:
 
     async def _cleanup_expired_memories(self) -> dict[str, Any]:
         """Retract memories that have passed their expires_at timestamp."""
-        from sqlalchemy import text
+        from app.services.forgetting_service import ForgettingService
 
-        now = datetime.now(UTC)
         async with async_session_factory() as session:
-            result = await session.execute(
-                text("""
-                    UPDATE memories
-                    SET status = 'retracted', updated_at = NOW()
-                    WHERE status = 'active'
-                      AND expires_at IS NOT NULL
-                      AND expires_at < :now
-                    RETURNING id
-                """),
-                {"now": now},
-            )
-            retracted_ids = [str(row[0]) for row in result.fetchall()]
+            report = await ForgettingService(session).retract_expired()
             await session.commit()
-            return {"retracted_count": len(retracted_ids)}
+            return report
+
+    async def _decay_importance(self) -> dict[str, Any]:
+        """Decay importance for unused memories (no-op unless ENABLE_DECAY)."""
+        from app.services.forgetting_service import ForgettingService
+
+        if not settings.enable_decay:
+            return {"skipped": True, "reason": "ENABLE_DECAY is false"}
+
+        async with async_session_factory() as session:
+            report = await ForgettingService(session).decay_importance()
+            await session.commit()
+            return report
 
     async def _prune_access_logs(self) -> dict[str, Any]:
         """Remove access log entries older than retention period."""

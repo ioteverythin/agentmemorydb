@@ -11,6 +11,7 @@ from __future__ import annotations
 import uuid
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from typing import Any
 
 from app.db import async_session_factory
@@ -25,6 +26,12 @@ class ToolDefinition:
     description: str
     input_schema: dict[str, Any]
     handler: Callable[[dict[str, Any]], Awaitable[dict[str, Any]]]
+    # API-key scope the caller must hold. Set for destructive tools; the server
+    # enforces it before the handler runs.
+    requires_scope: str | None = None
+    # Settings attribute that must be True for this tool to be listed/callable.
+    # Keeps opt-in tools invisible until deliberately enabled.
+    requires_flag: str | None = None
 
 
 # ─── Tool Handlers ───────────────────────────────────────────────
@@ -253,6 +260,78 @@ async def handle_consolidate_memories(arguments: dict[str, Any]) -> dict[str, An
             "duplicates_found": report.get("duplicate_groups_found", 0),
             "merged": report.get("memories_merged", 0),
             "details": [],
+        }
+
+
+async def handle_recall_memories_at_time(arguments: dict[str, Any]) -> dict[str, Any]:
+    """Recall what the agent believed at a past instant (point-in-time recall).
+
+    Same ranking as ``recall_memories``, but each fact is projected back to the
+    generation that was valid at ``as_of`` — so an agent can answer "what did I
+    know last March?" without confusing it with what it knows now.
+    """
+    from app.services.retrieval_service import RetrievalService
+
+    as_of = datetime.fromisoformat(arguments["as_of"])
+    if as_of.tzinfo is None:
+        as_of = as_of.replace(tzinfo=UTC)
+
+    async with async_session_factory() as session:
+        svc = RetrievalService(session)
+        req = MemorySearchRequest(
+            user_id=uuid.UUID(arguments["user_id"]),
+            query_text=arguments.get("query_text"),
+            memory_types=arguments.get("memory_types"),
+            scopes=arguments.get("scopes"),
+            top_k=arguments.get("top_k", 10),
+            project_id=uuid.UUID(arguments["project_id"]) if arguments.get("project_id") else None,
+            as_of=as_of,
+            explain=False,
+        )
+        response = await svc.search(req)
+
+        results = [
+            {
+                "memory_id": str(item.memory.id),
+                "memory_key": item.memory.memory_key,
+                "memory_type": item.memory.memory_type,
+                "content": item.memory.content,
+                "valid_from": str(item.memory.valid_from),
+                "valid_to": str(item.memory.valid_to) if item.memory.valid_to else None,
+                "version": item.memory.version,
+            }
+            for item in response.results
+        ]
+        return {
+            "as_of": as_of.isoformat(),
+            "query": arguments.get("query_text", ""),
+            "total_candidates": response.total_candidates,
+            "results": results,
+        }
+
+
+async def handle_forget_memory(arguments: dict[str, Any]) -> dict[str, Any]:
+    """Hard-erase a memory, leaving an auditable tombstone.
+
+    Irreversible. Gated twice: the ``MCP_ENABLE_FORGET`` flag must be on, and the
+    calling API key must hold the ``erase`` scope.
+    """
+    from app.services.forgetting_service import ForgettingService
+
+    async with async_session_factory() as session:
+        report = await ForgettingService(session).erase_memory(
+            uuid.UUID(arguments["memory_id"]),
+            action="user_erasure",
+            reason=arguments.get("reason"),
+            triggered_by="mcp:forget_memory",
+        )
+        await session.commit()
+        return {
+            **report,
+            "message": (
+                "Memory erased. A forgetting-log tombstone retains only the "
+                "SHA-256 of the deleted content."
+            ),
         }
 
 
@@ -556,5 +635,90 @@ TOOL_REGISTRY: dict[str, ToolDefinition] = {
             "required": ["user_id"],
         },
         handler=handle_consolidate_memories,
+    ),
+    "recall_memories_at_time": ToolDefinition(
+        name="recall_memories_at_time",
+        description=(
+            "Recall memories as they stood at a past instant — point-in-time "
+            "retrieval over the bitemporal fact history. Use this when the "
+            "question is about the past ('what did we believe in March?', 'what "
+            "was the user's address before they moved?') rather than the present. "
+            "Facts that have since been superseded are returned in the generation "
+            "that was valid at that time."
+        ),
+        input_schema={
+            "type": "object",
+            "properties": {
+                "user_id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "description": "The user whose memories to search.",
+                },
+                "as_of": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "ISO-8601 instant to recall at (assumed UTC if no offset).",
+                },
+                "query_text": {
+                    "type": "string",
+                    "description": "Natural language query to find relevant memories.",
+                },
+                "memory_types": {
+                    "type": "array",
+                    "items": {
+                        "type": "string",
+                        "enum": ["working", "episodic", "semantic", "procedural"],
+                    },
+                    "description": "Filter to specific memory types.",
+                },
+                "scopes": {
+                    "type": "array",
+                    "items": {"type": "string", "enum": ["user", "project", "team", "global"]},
+                    "description": "Filter to specific scopes.",
+                },
+                "top_k": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 100,
+                    "default": 10,
+                    "description": "Number of results to return.",
+                },
+                "project_id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "description": "Optional project filter.",
+                },
+            },
+            "required": ["user_id", "as_of"],
+        },
+        handler=handle_recall_memories_at_time,
+    ),
+    "forget_memory": ToolDefinition(
+        name="forget_memory",
+        description=(
+            "Permanently erase a memory (GDPR right-to-be-forgotten). This is "
+            "IRREVERSIBLE: the content and all its versions are deleted, and only "
+            "an audit tombstone with a SHA-256 of the erased content remains. "
+            "Prefer archiving via memory status for ordinary cleanup; use this "
+            "only for an explicit deletion request."
+        ),
+        input_schema={
+            "type": "object",
+            "properties": {
+                "memory_id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "description": "The memory to erase.",
+                },
+                "reason": {
+                    "type": "string",
+                    "description": "Why it is being erased — recorded in the forgetting log.",
+                },
+            },
+            "required": ["memory_id"],
+        },
+        handler=handle_forget_memory,
+        requires_scope="erase",
+        requires_flag="mcp_enable_forget",
     ),
 }

@@ -90,8 +90,11 @@ class TestMCPToolsList:
         resp = await server.handle_message(msg)
 
         tools = resp["result"]["tools"]
-        assert len(tools) == 7
+        # 8 tools listed: forget_memory is flag-gated and hidden while
+        # MCP_ENABLE_FORGET is off (the default).
+        assert len(tools) == 8
         tool_names = {t["name"] for t in tools}
+        assert "forget_memory" not in tool_names
         assert tool_names == {
             "store_memory",
             "recall_memories",
@@ -100,6 +103,7 @@ class TestMCPToolsList:
             "record_event",
             "explore_graph",
             "consolidate_memories",
+            "recall_memories_at_time",
         }
 
     @pytest.mark.asyncio
@@ -597,9 +601,9 @@ class TestScheduledJob:
 class TestMaintenanceScheduler:
     """Test MaintenanceScheduler setup and control."""
 
-    def test_scheduler_has_six_jobs(self):
+    def test_scheduler_has_all_jobs(self):
         scheduler = MaintenanceScheduler()
-        assert len(scheduler._jobs) == 6
+        assert len(scheduler._jobs) == 7
 
     def test_job_names(self):
         scheduler = MaintenanceScheduler()
@@ -611,6 +615,7 @@ class TestMaintenanceScheduler:
             "cleanup_expired",
             "prune_access_logs",
             "distill_memories",
+            "decay_importance",
         }
 
     def test_jobs_use_settings_intervals(self):
@@ -646,7 +651,7 @@ class TestMaintenanceScheduler:
         status = await scheduler.get_status()
 
         assert status["running"] is False
-        assert len(status["jobs"]) == 6
+        assert len(status["jobs"]) == 7
         for job_status in status["jobs"]:
             assert "name" in job_status
             assert "enabled" in job_status

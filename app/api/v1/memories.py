@@ -10,13 +10,15 @@ from fastapi import APIRouter, Depends, Query
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.auth import enforce_tenant, get_current_api_key
+from app.core.auth import assert_scope, enforce_tenant, get_current_api_key
 from app.db.session import get_session
 from app.models.api_key import APIKey
+from app.schemas.forgetting import ErasureResponse
 from app.schemas.memory import (
     ContextAssembleRequest,
     ContextAssembleResponse,
     MemoryInvalidateRequest,
+    MemoryPinRequest,
     MemoryResponse,
     MemorySearchRequest,
     MemorySearchResponse,
@@ -28,6 +30,7 @@ from app.schemas.memory_link import MemoryLinkResponse
 from app.schemas.team import ACLGrantRequest, ACLResponse, MemoryShareRequest
 from app.services.access_service import AccessService
 from app.services.context_assembly_service import ContextAssemblyService
+from app.services.forgetting_service import ForgettingService
 from app.services.memory_service import MemoryService
 from app.services.retrieval_service import RetrievalService
 from app.services.temporal_service import TemporalService
@@ -283,6 +286,62 @@ async def invalidate_memory(
     enforce_tenant(api_key, memory.user_id)
     memory = await svc.invalidate(memory_id, valid_to=data.valid_to)
     return MemoryResponse.model_validate(memory)
+
+
+@router.patch("/{memory_id}/pin", response_model=MemoryResponse)
+async def pin_memory(
+    memory_id: uuid.UUID,
+    data: MemoryPinRequest,
+    session: AsyncSession = Depends(get_session),
+    api_key: APIKey | None = Depends(get_current_api_key),
+) -> MemoryResponse:
+    """Pin or unpin a memory.
+
+    Pinned memories are exempt from importance decay and retention archival —
+    the escape hatch for facts that must survive however rarely they are used.
+    """
+    svc = MemoryService(session)
+    memory = await svc.get_memory(memory_id)
+    enforce_tenant(api_key, memory.user_id)
+    memory = await svc.set_pinned(memory_id, pinned=data.pinned)
+    return MemoryResponse.model_validate(memory)
+
+
+@router.delete("/{memory_id}", response_model=ErasureResponse)
+async def delete_memory(
+    memory_id: uuid.UUID,
+    mode: str = Query(
+        default="archive",
+        pattern="^(archive|erase)$",
+        description="'archive' (default, reversible) or 'erase' (irreversible hard delete).",
+    ),
+    reason: str | None = Query(default=None, description="Recorded in the forgetting log."),
+    session: AsyncSession = Depends(get_session),
+    api_key: APIKey | None = Depends(get_current_api_key),
+) -> ErasureResponse:
+    """Archive (default) or hard-erase a memory.
+
+    ``mode=erase`` is the GDPR right-to-be-forgotten path: the memory and its
+    versions are deleted outright, leaving a ``forgetting_log`` tombstone with a
+    SHA-256 of the erased content. It is irreversible and requires an API key
+    with the ``erase`` scope; the default ``mode=archive`` only flips the status.
+    """
+    svc = MemoryService(session)
+    memory = await svc.get_memory(memory_id)
+    enforce_tenant(api_key, memory.user_id)
+
+    if mode == "erase":
+        assert_scope(api_key, "erase", allow_unscoped=False)
+        report = await ForgettingService(session).erase_memory(
+            memory_id,
+            action="user_erasure",
+            reason=reason,
+            triggered_by="api:delete_memory",
+        )
+        return ErasureResponse(erased=1, action=report["action"], memory_id=memory_id)
+
+    await svc.update_status(memory_id, MemoryStatusUpdate(status="archived"))
+    return ErasureResponse(erased=0, action="archived", memory_id=memory_id)
 
 
 @router.get("/{memory_id}/versions", response_model=list[MemoryVersionResponse])

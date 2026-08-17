@@ -15,6 +15,7 @@ from app.models.enums import (
     TaskState,
 )
 from app.models.event import Event
+from app.models.forgetting_log import ForgettingLog
 from app.models.masking_log import MaskingLog
 from app.models.memory import Memory
 from app.models.memory_access_log import MemoryAccessLog
@@ -37,6 +38,7 @@ __all__ = [
     "ArtifactMetadata",
     "Event",
     "EventType",
+    "ForgettingLog",
     "LinkType",
     "MaskingLog",
     "Memory",

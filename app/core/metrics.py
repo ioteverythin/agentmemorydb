@@ -72,6 +72,14 @@ if PROMETHEUS_AVAILABLE:
         registry=REGISTRY,
     )
 
+    MEMORY_FORGETTING = Counter(
+        "engramdb_memory_forgetting_total",
+        "Memories removed from active recall, by forgetting action",
+        # decayed | decayed_archive | expired | user_erasure | admin_erasure | quarantined
+        ["action"],
+        registry=REGISTRY,
+    )
+
     MEMORY_SEARCHES = Counter(
         "engramdb_memory_searches_total",
         "Total memory search operations",
@@ -165,6 +173,12 @@ def record_contradiction(verdict: str) -> None:
     """Record a detected contradiction by verdict."""
     if PROMETHEUS_AVAILABLE:
         MEMORY_CONTRADICTIONS.labels(verdict=verdict).inc()
+
+
+def record_forgetting(action: str, count: int = 1) -> None:
+    """Record forgetting activity (decay, expiry, erasure, quarantine)."""
+    if PROMETHEUS_AVAILABLE and count:
+        MEMORY_FORGETTING.labels(action=action).inc(count)
 
 
 def record_search(strategy: str) -> None:

@@ -30,6 +30,8 @@ Welcome to the EngramDB documentation. Use the guides below to learn how to use 
 |---|---|
 | [Detailed Technical Reference](DETAILED_REFERENCE.md) | In-depth technical reference — scoring, schema, services, and internals |
 | [Architecture](architecture.md) | System design diagrams and data flow |
+| [Temporal Model](temporal-model.md) | Bitemporal facts, `as_of` queries, supersession, and timelines |
+| [Forgetting](forgetting.md) | Decay, reconsolidation, pinning, and auditable GDPR erasure |
 
 ---
 

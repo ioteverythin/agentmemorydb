@@ -31,6 +31,9 @@ class MemoryUpsert(BaseModel):
     authority_level: int = Field(default=1, ge=1, le=4)
     confidence: float = Field(default=0.5, ge=0.0, le=1.0)
     importance_score: float = Field(default=0.5, ge=0.0, le=1.0)
+    # Pin a memory to exempt it from importance decay and retention archival.
+    # ``None`` leaves an existing memory's pin state untouched.
+    pinned: bool | None = None
     # World-validity: when this fact became true. Agents may backdate
     # ("the user moved to Pune last March"). Defaults to now().
     valid_from: datetime | None = None
@@ -109,6 +112,7 @@ class MemoryResponse(OrmBase):
     source_observation_id: uuid.UUID | None = None
     source_run_id: uuid.UUID | None = None
     status: str
+    pinned: bool = False
     authority_level: int
     confidence: float
     importance_score: float
@@ -135,6 +139,12 @@ class MemorySearchResponse(BaseModel):
 
 class MemoryStatusUpdate(BaseModel):
     status: str  # MemoryStatus value
+
+
+class MemoryPinRequest(BaseModel):
+    """Pin or unpin a memory (pinned memories never decay or auto-archive)."""
+
+    pinned: bool
 
 
 class MemoryInvalidateRequest(BaseModel):

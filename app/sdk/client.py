@@ -18,9 +18,15 @@ Usage:
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any
 
 import httpx
+
+
+def _iso(value: str | datetime) -> str:
+    """Normalise a timestamp argument to ISO-8601 for the wire."""
+    return value.isoformat() if isinstance(value, datetime) else value
 
 
 class EngramDBError(Exception):
@@ -183,6 +189,7 @@ class EngramDBClient:
         importance_score: float = 0.5,
         confidence: float = 0.5,
         is_contradiction: bool = False,
+        pinned: bool | None = None,
         **kwargs: Any,
     ) -> dict:
         payload: dict[str, Any] = {
@@ -196,6 +203,8 @@ class EngramDBClient:
             "is_contradiction": is_contradiction,
             **kwargs,
         }
+        if pinned is not None:
+            payload["pinned"] = pinned
         resp = await self._client.post("/api/v1/memories/upsert", json=payload)
         self._raise_for_status(resp)
         return resp.json()
@@ -215,8 +224,10 @@ class EngramDBClient:
         memory_types: list[str] | None = None,
         scopes: list[str] | None = None,
         run_id: str | None = None,
+        as_of: str | datetime | None = None,
         **kwargs: Any,
     ) -> dict:
+        """Hybrid search. Pass ``as_of`` to search the facts valid at an instant."""
         payload: dict[str, Any] = {
             "user_id": user_id,
             "query_text": query,
@@ -230,6 +241,8 @@ class EngramDBClient:
             payload["scopes"] = scopes
         if run_id:
             payload["run_id"] = run_id
+        if as_of is not None:
+            payload["as_of"] = _iso(as_of)
         resp = await self._client.post("/api/v1/memories/search", json=payload)
         self._raise_for_status(resp)
         return resp.json()
@@ -243,6 +256,7 @@ class EngramDBClient:
         status: str | None = None,
         limit: int = 100,
         offset: int = 0,
+        as_of: str | datetime | None = None,
     ) -> list[dict]:
         params: dict[str, Any] = {"user_id": user_id, "limit": limit, "offset": offset}
         if memory_type:
@@ -251,6 +265,8 @@ class EngramDBClient:
             params["scope"] = scope
         if status:
             params["status"] = status
+        if as_of is not None:
+            params["as_of"] = _iso(as_of)
         resp = await self._client.get("/api/v1/memories", params=params)
         self._raise_for_status(resp)
         return resp.json()
@@ -259,6 +275,66 @@ class EngramDBClient:
         resp = await self._client.patch(
             f"/api/v1/memories/{memory_id}/status", json={"status": status}
         )
+        self._raise_for_status(resp)
+        return resp.json()
+
+    async def timeline(self, memory_id: str) -> dict:
+        """The full supersession chain for a memory, oldest generation first."""
+        resp = await self._client.get(f"/api/v1/memories/{memory_id}/timeline")
+        self._raise_for_status(resp)
+        return resp.json()
+
+    async def invalidate_memory(
+        self, memory_id: str, *, valid_to: str | datetime | None = None
+    ) -> dict:
+        """Close a fact's validity window with no replacement (it stopped being true)."""
+        payload: dict[str, Any] = {}
+        if valid_to is not None:
+            payload["valid_to"] = _iso(valid_to)
+        resp = await self._client.post(f"/api/v1/memories/{memory_id}/invalidate", json=payload)
+        self._raise_for_status(resp)
+        return resp.json()
+
+    # ── Forgetting ──────────────────────────────────────────────
+
+    async def pin_memory(self, memory_id: str, *, pinned: bool = True) -> dict:
+        """Pin (or unpin) a memory so it is never decayed or auto-archived."""
+        resp = await self._client.patch(
+            f"/api/v1/memories/{memory_id}/pin", json={"pinned": pinned}
+        )
+        self._raise_for_status(resp)
+        return resp.json()
+
+    async def erase(self, memory_id: str, *, reason: str | None = None) -> dict:
+        """Hard-erase a memory (irreversible; needs an API key with ``erase`` scope).
+
+        A ``forgetting_log`` tombstone with the content's SHA-256 survives, so the
+        erasure is auditable without the content.
+        """
+        params: dict[str, Any] = {"mode": "erase"}
+        if reason:
+            params["reason"] = reason
+        resp = await self._client.delete(f"/api/v1/memories/{memory_id}", params=params)
+        self._raise_for_status(resp)
+        return resp.json()
+
+    async def erase_user(self, user_id: str, *, reason: str | None = None) -> dict:
+        """Erase every memory for a user (GDPR right-to-be-forgotten)."""
+        params: dict[str, Any] = {"mode": "erase"}
+        if reason:
+            params["reason"] = reason
+        resp = await self._client.delete(f"/api/v1/users/{user_id}/memories", params=params)
+        self._raise_for_status(resp)
+        return resp.json()
+
+    async def forgetting_log(
+        self, *, user_id: str | None = None, limit: int = 100, offset: int = 0
+    ) -> list[dict]:
+        """Read the forgetting audit trail — decay, expiry, and erasure decisions."""
+        params: dict[str, Any] = {"limit": limit, "offset": offset}
+        if user_id:
+            params["user_id"] = user_id
+        resp = await self._client.get("/api/v1/forgetting/log", params=params)
         self._raise_for_status(resp)
         return resp.json()
 

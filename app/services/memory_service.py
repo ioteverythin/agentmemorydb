@@ -108,9 +108,12 @@ class MemoryService:
 
             # Skip update if content is identical
             if existing.content_hash == content_hash:
-                # Touch updated_at only
+                # Touch updated_at only — but an explicit pin still applies, so
+                # re-upserting unchanged content can pin it.
                 existing.updated_at = datetime.now(UTC)
                 existing.recency_score = 1.0
+                if data.pinned is not None:
+                    existing.pinned = data.pinned
                 record_upsert("skip_identical")
                 return existing, False
 
@@ -143,6 +146,10 @@ class MemoryService:
             existing.confidence = data.confidence
             existing.importance_score = data.importance_score
             existing.recency_score = 1.0
+            # ``None`` means "leave the pin as it is" — pinning is a deliberate
+            # operator decision that a routine content update must not clear.
+            if data.pinned is not None:
+                existing.pinned = data.pinned
             existing.valid_from = new_valid_from
             existing.valid_to = data.valid_to
             existing.expires_at = data.expires_at
@@ -196,6 +203,7 @@ class MemoryService:
                 confidence=data.confidence,
                 importance_score=data.importance_score,
                 recency_score=1.0,
+                pinned=bool(data.pinned),
                 valid_from=data.valid_from or datetime.now(UTC),
                 valid_to=data.valid_to,
                 expires_at=data.expires_at,
@@ -296,6 +304,18 @@ class MemoryService:
                 project_id=memory.project_id,
                 memory_id=memory.id,
             )
+        return memory
+
+    async def set_pinned(self, memory_id: uuid.UUID, *, pinned: bool) -> Memory:
+        """Pin or unpin a memory.
+
+        A pinned memory is exempt from importance decay and retention archival —
+        the escape hatch for facts that must never be forgotten regardless of
+        how rarely they are recalled.
+        """
+        memory = await self.get_memory(memory_id)
+        memory.pinned = pinned
+        memory.updated_at = datetime.now(UTC)
         return memory
 
     # ── Versions & links ────────────────────────────────────────

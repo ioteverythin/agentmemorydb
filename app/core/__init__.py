@@ -34,6 +34,18 @@ class Settings(BaseSettings):
     hnsw_ef_construction: int = 64  # size of dynamic candidate list during build
     hnsw_ef_search: int = 40  # size of dynamic candidate list during search
 
+    # ── Forgetting: decay & reconsolidation (Ebbinghaus-style) ───
+    # Importance decays exponentially since last access; frequently-recalled
+    # memories are boosted on retrieval, so use resists decay. Pinned memories
+    # are never decayed or archived.
+    enable_decay: bool = False
+    decay_half_life_hours: float = 720.0  # 30 days
+    decay_floor: float = 0.05
+    scheduler_decay_interval: int = 21600  # 6h
+    scheduler_enable_decay: bool = True
+    enable_reconsolidation: bool = False
+    reconsolidation_boost: float = 0.02
+
     # ── LLM provider (optional; powers contradiction + reflection) ─
     llm_provider: str = "none"  # none | openai
     llm_model: str = "gpt-4o-mini"
@@ -123,6 +135,10 @@ class Settings(BaseSettings):
 
     # ── MCP Server ───────────────────────────────────────────
     enable_mcp: bool = True
+    # Expose the irreversible `forget_memory` tool over MCP. Off by default:
+    # an agent should not be able to hard-delete data unless deliberately
+    # allowed to, and even then the key needs the `erase` scope.
+    mcp_enable_forget: bool = False
 
     # ── Memory Explorer UI ───────────────────────────────────
     enable_explorer: bool = True

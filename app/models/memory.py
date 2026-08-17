@@ -6,7 +6,18 @@ import uuid
 from datetime import datetime
 
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import DateTime, Float, ForeignKey, Index, Integer, String, Text, func, text
+from sqlalchemy import (
+    Boolean,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    func,
+    text,
+)
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -56,6 +67,8 @@ class Memory(Base):
 
     # ── Governance ──────────────────────────────────────────────
     status: Mapped[str] = mapped_column(String(32), nullable=False, default="active", index=True)
+    # Pinned memories are exempt from importance decay and retention archival.
+    pinned: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, index=True)
     authority_level: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     confidence: Mapped[float] = mapped_column(Float, nullable=False, default=0.5)
     importance_score: Mapped[float] = mapped_column(Float, nullable=False, default=0.5)

@@ -43,6 +43,22 @@ class RetrievalService:
         self._log_repo = RetrievalLogRepository(session)
         self._access_tracker = AccessTrackingService(session)
 
+    def _reconsolidate(self, memories: list[Memory]) -> None:
+        """Strengthen recalled memories (the counterweight to importance decay).
+
+        Retrieval is the evidence that a memory is still useful, so recall bumps
+        importance by ``RECONSOLIDATION_BOOST`` (capped at 1.0) and refreshes the
+        recency score. Without this, decay would eventually flatten every
+        memory regardless of how heavily it is used; with it, *use* is what keeps
+        a memory important. Point-in-time (``as_of``) queries are exempt —
+        auditing history must not rewrite it.
+        """
+        boost = settings.reconsolidation_boost
+        for memory in memories:
+            if memory.importance_score < 1.0:
+                memory.importance_score = min(round(memory.importance_score + boost, 6), 1.0)
+            memory.recency_score = 1.0
+
     async def search(self, req: MemorySearchRequest) -> MemorySearchResponse:
         """Execute hybrid search and return scored, auditable results.
 
@@ -234,6 +250,12 @@ class RetrievalService:
                 run_id=req.run_id,
                 access_type="retrieval",
             )
+
+        # ── Reconsolidation on retrieval ────────────────────────
+        # Recall strengthens a memory. Applied after the response is built, so
+        # the returned scores reflect the state that produced this ranking.
+        if settings.enable_reconsolidation and req.as_of is None:
+            self._reconsolidate([m for m, _, _ in scored])
 
         return MemorySearchResponse(
             results=results,
