@@ -80,6 +80,13 @@ if PROMETHEUS_AVAILABLE:
         registry=REGISTRY,
     )
 
+    AUTHORITY_CLAMPS = Counter(
+        "engramdb_authority_clamps_total",
+        "Writes whose requested authority exceeded their origin's ceiling",
+        ["origin"],
+        registry=REGISTRY,
+    )
+
     MEMORY_SEARCHES = Counter(
         "engramdb_memory_searches_total",
         "Total memory search operations",
@@ -179,6 +186,16 @@ def record_forgetting(action: str, count: int = 1) -> None:
     """Record forgetting activity (decay, expiry, erasure, quarantine)."""
     if PROMETHEUS_AVAILABLE and count:
         MEMORY_FORGETTING.labels(action=action).inc(count)
+
+
+def record_authority_clamp(origin: str) -> None:
+    """Record a write whose authority was clamped to its origin's ceiling.
+
+    A rising rate here is the signal worth alerting on: something is repeatedly
+    trying to write above its trust level.
+    """
+    if PROMETHEUS_AVAILABLE:
+        AUTHORITY_CLAMPS.labels(origin=origin).inc()
 
 
 def record_search(strategy: str) -> None:

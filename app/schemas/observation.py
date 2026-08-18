@@ -19,6 +19,10 @@ class ObservationCreate(BaseModel):
     content: str
     observation_type: str | None = None
     source_type: str = "system_inference"
+    # Trust domain this candidate arrived from; carried onto the memory when
+    # the observation is promoted.
+    origin: str = "agent_inference"
+    origin_ref: str | None = None
     confidence: float = Field(default=0.5, ge=0.0, le=1.0)
     metadata: dict[str, Any] | None = None
 
@@ -46,6 +50,8 @@ class ObservationPromoteRequest(BaseModel):
     # Override the observation's confidence; defaults to the observation's own.
     confidence: float | None = Field(default=None, ge=0.0, le=1.0)
     is_contradiction: bool = False
+    # Override the observation's origin; defaults to the observation's own.
+    origin: str | None = None
     # Mark the resulting memory as human-verified provenance.
     human_verified: bool = False
 
@@ -62,6 +68,8 @@ class ObservationResponse(OrmBase):
     content: str
     observation_type: str | None = None
     source_type: str
+    origin: str = "agent_inference"
+    origin_ref: str | None = None
     confidence: float
     metadata: dict[str, Any] | None = None
     status: str

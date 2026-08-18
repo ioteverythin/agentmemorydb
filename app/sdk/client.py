@@ -190,8 +190,17 @@ class EngramDBClient:
         confidence: float = 0.5,
         is_contradiction: bool = False,
         pinned: bool | None = None,
+        origin: str | None = None,
+        origin_ref: str | None = None,
         **kwargs: Any,
     ) -> dict:
+        """Create or update a memory.
+
+        ``origin`` declares the trust domain of the writer (``user``,
+        ``operator``, ``agent_inference``, ``tool_output``, ``external_ingest``,
+        …). It caps the authority this write may claim and decides whether an
+        untrusted, low-confidence write is quarantined — so attribute honestly.
+        """
         payload: dict[str, Any] = {
             "user_id": user_id,
             "memory_key": memory_key,
@@ -205,6 +214,10 @@ class EngramDBClient:
         }
         if pinned is not None:
             payload["pinned"] = pinned
+        if origin is not None:
+            payload["origin"] = origin
+        if origin_ref is not None:
+            payload["origin_ref"] = origin_ref
         resp = await self._client.post("/api/v1/memories/upsert", json=payload)
         self._raise_for_status(resp)
         return resp.json()
@@ -324,6 +337,36 @@ class EngramDBClient:
         if reason:
             params["reason"] = reason
         resp = await self._client.delete(f"/api/v1/users/{user_id}/memories", params=params)
+        self._raise_for_status(resp)
+        return resp.json()
+
+    # ── Provenance ──────────────────────────────────────────────
+
+    async def origin_policy(self) -> dict:
+        """The active trust policy: authority ceilings and quarantine rules."""
+        resp = await self._client.get("/api/v1/provenance/policy")
+        self._raise_for_status(resp)
+        return resp.json()
+
+    async def list_quarantined(
+        self, *, user_id: str | None = None, limit: int = 100, offset: int = 0
+    ) -> list[dict]:
+        """The review queue — writes held back because their origin was untrusted."""
+        params: dict[str, Any] = {"limit": limit, "offset": offset}
+        if user_id:
+            params["user_id"] = user_id
+        resp = await self._client.get("/api/v1/provenance/quarantine", params=params)
+        self._raise_for_status(resp)
+        return resp.json()
+
+    async def review_quarantined(
+        self, memory_id: str, *, approve: bool, reviewer: str | None = None
+    ) -> dict:
+        """Approve a quarantined memory into active recall, or reject it."""
+        resp = await self._client.post(
+            f"/api/v1/provenance/quarantine/{memory_id}/review",
+            json={"approve": approve, "reviewer": reviewer},
+        )
         self._raise_for_status(resp)
         return resp.json()
 

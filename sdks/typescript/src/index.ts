@@ -45,4 +45,6 @@ export type {
   HealthResponse,
   ForgettingLogEntry,
   ErasureResponse,
+  MemoryOrigin,
+  OriginPolicy,
 } from './types';

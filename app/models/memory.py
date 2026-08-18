@@ -59,6 +59,13 @@ class Memory(Base):
 
     # ── Provenance ──────────────────────────────────────────────
     source_type: Mapped[str] = mapped_column(String(64), nullable=False, default="system_inference")
+    # *Who* wrote this — the trust domain it entered from. Governs the authority
+    # ceiling and quarantine eligibility (see app/utils/provenance.py).
+    origin: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="agent_inference", index=True
+    )
+    # Free-form pointer to the specific writer: a URL, tool name, document id.
+    origin_ref: Mapped[str | None] = mapped_column(String(512), nullable=True)
     source_event_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     source_observation_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), nullable=True
@@ -144,5 +151,12 @@ class Memory(Base):
         ),
         # As-of range scans.
         Index("ix_memories_user_validity", "user_id", "valid_from", "valid_to"),
+        # Quarantine review queue.
+        Index(
+            "ix_memories_quarantine",
+            "user_id",
+            "status",
+            postgresql_where=text("status = 'quarantined'"),
+        ),
         _build_vector_index.__func__(),  # type: ignore[attr-defined]
     )

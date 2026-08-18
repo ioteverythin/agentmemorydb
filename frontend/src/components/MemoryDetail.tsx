@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import type { Memory, Score, MemoryVersion, MemoryLink } from '../lib/types';
 import { useApp } from '../context/AppContext';
-import { formatDate, formatId, typeColorClass } from '../lib/utils';
+import { formatDate, formatId, originColorClass, statusColorClass, typeColorClass } from '../lib/utils';
 import ScoreBar from './ScoreBar';
-import { Network, Copy, Clock, Link2 } from 'lucide-react';
+import { Network, Copy, Clock, Link2, ShieldAlert } from 'lucide-react';
 
 interface MemoryDetailProps {
   memory: Memory;
@@ -24,15 +24,25 @@ export default function MemoryDetail({ memory, score, onGraphClick }: MemoryDeta
 
   const copyId = () => navigator.clipboard?.writeText(memory.id);
 
-  const statusColor =
-    memory.status === 'active'
-      ? 'text-gh-green'
-      : memory.status === 'archived'
-        ? 'text-gh-orange'
-        : 'text-gh-red';
+  const statusColor = statusColorClass(memory.status);
 
   return (
     <div className="space-y-5">
+      {/* Quarantine banner — this content is deliberately not retrievable. */}
+      {memory.status === 'quarantined' && (
+        <div className="flex items-start gap-2 rounded border border-gh-orange/40 bg-gh-orange-dim px-3 py-2">
+          <ShieldAlert className="w-4 h-4 text-gh-orange shrink-0 mt-0.5" />
+          <div className="text-xs text-gh-orange">
+            <div className="font-semibold">Quarantined</div>
+            <div className="text-gh-muted mt-0.5">
+              Written from an untrusted origin below the confidence threshold. It is
+              stored for review and will not be retrieved or assembled into a prompt
+              until it is released.
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex justify-between items-start">
         <div>
@@ -71,6 +81,17 @@ export default function MemoryDetail({ memory, score, onGraphClick }: MemoryDeta
           { label: 'Status', value: <span className={statusColor}>{memory.status}</span> },
           { label: 'Version', value: `v${memory.version}` },
           { label: 'Source', value: memory.source_type },
+          {
+            label: 'Origin',
+            value: (
+              <span
+                className={`text-xs px-2 py-0.5 rounded font-semibold ${originColorClass(memory.origin)}`}
+                title={memory.origin_ref ?? undefined}
+              >
+                {memory.origin ?? 'agent_inference'}
+              </span>
+            ),
+          },
           { label: 'Authority', value: String(memory.authority_level) },
           { label: 'Created', value: formatDate(memory.created_at) },
           { label: 'Updated', value: formatDate(memory.updated_at) },

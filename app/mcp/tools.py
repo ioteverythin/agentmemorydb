@@ -56,17 +56,29 @@ async def handle_store_memory(arguments: dict[str, Any]) -> dict[str, Any]:
             importance_score=arguments.get("importance_score", 0.5),
             project_id=uuid.UUID(arguments["project_id"]) if arguments.get("project_id") else None,
             is_contradiction=arguments.get("is_contradiction", False),
+            origin=arguments.get("origin", "agent_inference"),
+            origin_ref=arguments.get("origin_ref"),
         )
         memory, is_new = await svc.upsert(data)
         await session.commit()
 
+        quarantined = memory.status == "quarantined"
+        message = (
+            "Memory quarantined: it came from an untrusted origin with low "
+            "confidence, so it is stored for human review but will not be "
+            "retrieved until released."
+            if quarantined
+            else f"Memory {'created' if is_new else 'updated'} successfully."
+        )
         return {
             "memory_id": str(memory.id),
             "memory_key": memory.memory_key,
             "is_new": is_new,
             "version": memory.version,
             "status": memory.status,
-            "message": f"Memory {'created' if is_new else 'updated'} successfully.",
+            "origin": memory.origin,
+            "authority_level": memory.authority_level,
+            "message": message,
         }
 
 
@@ -413,6 +425,32 @@ TOOL_REGISTRY: dict[str, ToolDefinition] = {
                     "type": "boolean",
                     "default": False,
                     "description": "Whether this contradicts an existing memory.",
+                },
+                "origin": {
+                    "type": "string",
+                    "enum": [
+                        "operator",
+                        "user",
+                        "system",
+                        "agent_inference",
+                        "tool_output",
+                        "imported",
+                        "external_ingest",
+                    ],
+                    "default": "agent_inference",
+                    "description": (
+                        "Where this content came from. Attribute it honestly: use "
+                        "'user' only for what the user actually said, 'tool_output' "
+                        "for a tool's result, and 'external_ingest' for anything "
+                        "fetched from outside the conversation (web pages, "
+                        "third-party APIs, uploaded documents). Origin caps how much "
+                        "authority the memory can claim, so mislabelling untrusted "
+                        "content as 'user' is a security problem."
+                    ),
+                },
+                "origin_ref": {
+                    "type": "string",
+                    "description": "Pointer to the specific writer: a URL, tool name, or document id.",
                 },
             },
             "required": ["user_id", "memory_key", "content"],

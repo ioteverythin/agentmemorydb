@@ -25,6 +25,12 @@ class MemoryUpsert(BaseModel):
     embedding: list[float] | None = None
     payload: dict[str, Any] | None = None
     source_type: str = "system_inference"
+    # Trust domain of the writer (MemoryOrigin). Caps the authority this write
+    # may claim and decides quarantine eligibility when poisoning resistance is
+    # on. Defaults to `agent_inference` — what an unattributed write is.
+    origin: str = "agent_inference"
+    # Pointer to the specific writer: a URL, tool name, or document id.
+    origin_ref: str | None = None
     source_event_id: uuid.UUID | None = None
     source_observation_id: uuid.UUID | None = None
     source_run_id: uuid.UUID | None = None
@@ -108,6 +114,8 @@ class MemoryResponse(OrmBase):
     content_hash: str
     payload: dict[str, Any] | None = None
     source_type: str
+    origin: str = "agent_inference"
+    origin_ref: str | None = None
     source_event_id: uuid.UUID | None = None
     source_observation_id: uuid.UUID | None = None
     source_run_id: uuid.UUID | None = None

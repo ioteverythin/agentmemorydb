@@ -32,6 +32,10 @@ export interface Memory {
   content_hash: string;
   payload: Record<string, unknown> | null;
   source_type: SourceType;
+  /** Trust domain the write came from — caps authority, gates quarantine. */
+  origin: MemoryOrigin;
+  /** Pointer to the specific writer: a URL, tool name, or document id. */
+  origin_ref: string | null;
   source_event_id: string | null;
   source_observation_id: string | null;
   source_run_id: string | null;
@@ -70,6 +74,10 @@ export interface MemoryUpsertInput {
   isContradiction?: boolean;
   /** Pin this memory so it is never decayed or auto-archived. */
   pinned?: boolean;
+  /** Trust domain of the writer. Attribute honestly: it caps the authority
+   *  this write may claim and decides whether it is quarantined. */
+  origin?: MemoryOrigin;
+  originRef?: string;
 }
 
 export interface MemorySearchInput {
@@ -212,4 +220,25 @@ export interface ErasureResponse {
   action: string;
   memory_id: string | null;
   user_id: string | null;
+}
+
+// ── Provenance ──────────────────────────────────────────────────
+
+/** Who wrote a fact — the trust domain it entered from. */
+export type MemoryOrigin =
+  | 'operator'
+  | 'user'
+  | 'system'
+  | 'agent_inference'
+  | 'tool_output'
+  | 'imported'
+  | 'external_ingest';
+
+/** The active write-trust policy. */
+export interface OriginPolicy {
+  enabled: boolean;
+  quarantine_confidence_threshold: number;
+  /** origin → highest authority_level that origin may claim */
+  authority_ceilings: Record<string, number>;
+  untrusted_origins: string[];
 }

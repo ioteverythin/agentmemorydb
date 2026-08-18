@@ -34,6 +34,12 @@ class Observation(Base):
     content: Mapped[str] = mapped_column(Text, nullable=False)
     observation_type: Mapped[str | None] = mapped_column(String(64), nullable=True)
     source_type: Mapped[str] = mapped_column(String(64), nullable=False, default="system_inference")
+    # Trust domain this candidate fact arrived from; carried through promotion
+    # onto the resulting memory so provenance survives the pipeline.
+    origin: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="agent_inference", index=True
+    )
+    origin_ref: Mapped[str | None] = mapped_column(String(512), nullable=True)
     confidence: Mapped[float] = mapped_column(Float, nullable=False, default=0.5)
     metadata_: Mapped[dict | None] = mapped_column("metadata", JSONB, nullable=True)
     status: Mapped[str] = mapped_column(String(32), nullable=False, default="pending")

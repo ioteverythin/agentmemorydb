@@ -46,6 +46,14 @@ class Settings(BaseSettings):
     enable_reconsolidation: bool = False
     reconsolidation_boost: float = 0.02
 
+    # ── Write provenance & poisoning resistance ──────────────────
+    # When True, each write's ``origin`` caps the ``authority_level`` it may
+    # claim, and low-confidence writes from untrusted origins are quarantined
+    # instead of entering active recall. Off by default: enabling it can only
+    # lower authority or hold a write back, never the reverse.
+    enable_poisoning_resistance: bool = False
+    quarantine_confidence_threshold: float = 0.6
+
     # ── LLM provider (optional; powers contradiction + reflection) ─
     llm_provider: str = "none"  # none | openai
     llm_model: str = "gpt-4o-mini"

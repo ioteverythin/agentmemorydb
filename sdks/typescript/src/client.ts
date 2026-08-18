@@ -23,6 +23,7 @@ import type {
   HealthResponse,
   ForgettingLogEntry,
   ErasureResponse,
+  OriginPolicy,
 } from './types';
 
 // ── HTTP Helper ─────────────────────────────────────────────────
@@ -117,6 +118,8 @@ class MemoriesClient {
       expires_at: input.expiresAt,
       is_contradiction: input.isContradiction ?? false,
       pinned: input.pinned,
+      origin: input.origin,
+      origin_ref: input.originRef,
     });
   }
 
@@ -176,6 +179,29 @@ class MemoriesClient {
   async erase(memoryId: string, reason?: string): Promise<ErasureResponse> {
     const query = reason ? `&reason=${encodeURIComponent(reason)}` : '';
     return this.http.delete(`/memories/${memoryId}?mode=erase${query}`);
+  }
+}
+
+class ProvenanceClient {
+  constructor(private http: HttpClient) {}
+
+  /** The active trust policy: authority ceilings and quarantine rules. */
+  async policy(): Promise<OriginPolicy> {
+    return this.http.get('/provenance/policy');
+  }
+
+  /** The review queue — writes held back because their origin was untrusted. */
+  async quarantine(params?: { userId?: string; limit?: number }): Promise<Memory[]> {
+    const query = new URLSearchParams();
+    if (params?.userId) query.set('user_id', params.userId);
+    if (params?.limit) query.set('limit', String(params.limit));
+    const qs = query.toString();
+    return this.http.get(`/provenance/quarantine${qs ? `?${qs}` : ''}`);
+  }
+
+  /** Approve a quarantined memory into active recall, or reject it. */
+  async review(memoryId: string, approve: boolean, reviewer?: string): Promise<Memory> {
+    return this.http.post(`/provenance/quarantine/${memoryId}/review`, { approve, reviewer });
   }
 }
 
@@ -314,6 +340,8 @@ export class EngramDB {
   public data: DataClient;
   /** Forgetting audit trail and erasure. */
   public forgetting: ForgettingClient;
+  /** Write-provenance policy and the quarantine review queue. */
+  public provenance: ProvenanceClient;
 
   constructor(config: EngramDBConfig) {
     this.http = new HttpClient(config);
@@ -324,6 +352,7 @@ export class EngramDB {
     this.consolidation = new ConsolidationClient(this.http);
     this.data = new DataClient(this.http);
     this.forgetting = new ForgettingClient(this.http);
+    this.provenance = new ProvenanceClient(this.http);
   }
 
   /** Health check. */

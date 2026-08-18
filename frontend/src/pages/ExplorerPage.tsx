@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import type { SearchResult, Memory, Score } from '../lib/types';
-import { cn, typeColorClass } from '../lib/utils';
+import { cn, originColorClass, typeColorClass } from '../lib/utils';
 import MemoryDetail from '../components/MemoryDetail';
 import { Search, Loader2 } from 'lucide-react';
 
@@ -143,6 +143,22 @@ export default function ExplorerPage() {
                     {m.memory_type}
                   </span>
                   <span className="text-[10px] text-gh-dim">v{m.version}</span>
+                  {m.origin && m.origin !== 'agent_inference' && (
+                    <span
+                      className={cn(
+                        'text-[9px] px-1.5 py-0.5 rounded font-semibold',
+                        originColorClass(m.origin),
+                      )}
+                      title={`origin: ${m.origin}`}
+                    >
+                      {m.origin}
+                    </span>
+                  )}
+                  {m.status === 'quarantined' && (
+                    <span className="text-[9px] px-1.5 py-0.5 rounded font-semibold bg-gh-orange-dim text-gh-orange">
+                      quarantined
+                    </span>
+                  )}
                   {r.score?.final_score != null && (
                     <span className="text-[10px] text-gh-accent ml-auto">
                       {r.score.final_score.toFixed(3)}

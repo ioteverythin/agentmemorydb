@@ -9,8 +9,15 @@ from datetime import UTC, datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.errors import NotFoundError
-from app.core.metrics import record_invalidation, record_supersession, record_upsert
+from app.core.config import settings
+from app.core.errors import ConflictError, NotFoundError
+from app.core.metrics import (
+    record_authority_clamp,
+    record_forgetting,
+    record_invalidation,
+    record_supersession,
+    record_upsert,
+)
 from app.models.memory import Memory
 from app.models.memory_link import MemoryLink
 from app.models.memory_version import MemoryVersion
@@ -20,6 +27,7 @@ from app.services.lifecycle import emit_lifecycle_event, memory_event_payload
 from app.utils.embedding_provider import get_embedding_provider
 from app.utils.hashing import compute_content_hash
 from app.utils.masking import get_default_engine
+from app.utils.provenance import clamp_authority, should_quarantine
 from app.ws import MemoryEventTypes
 
 logger = logging.getLogger(__name__)
@@ -82,6 +90,14 @@ class MemoryService:
 
         content_hash = compute_content_hash(data.content)
 
+        # ── Write provenance: clamp authority to the origin's ceiling ──
+        # A low-trust writer must not be able to claim high authority and thereby
+        # outrank what the user actually said. Clamped, not rejected: the fact is
+        # still worth storing, it just cannot outrank a more trusted writer.
+        authority, clamped = clamp_authority(data.origin, data.authority_level)
+        if clamped:
+            record_authority_clamp(data.origin)
+
         # ── Auto-generate embedding if not provided ──────────
         if data.embedding is None and data.content:
             try:
@@ -92,11 +108,23 @@ class MemoryService:
             except Exception:
                 logger.warning("Failed to auto-generate embedding for memory", exc_info=True)
 
-        existing = await self._repo.find_active_by_key(
-            user_id=data.user_id,
-            memory_key=data.memory_key,
-            scope=data.scope,
-            project_id=data.project_id,
+        # ── Quarantine decision, made *before* the incumbent lookup ──
+        # A quarantined write never supersedes anything. Were it allowed to take
+        # the update path it could overwrite — or worse, suppress — a fact the
+        # user stated, which is the poisoning attack this feature exists to stop.
+        # Quarantined rows are always fresh records, and since ``find_active_by_key``
+        # matches only active rows they can share a key without colliding.
+        quarantine = should_quarantine(data.origin, data.confidence)
+
+        existing = (
+            None
+            if quarantine
+            else await self._repo.find_active_by_key(
+                user_id=data.user_id,
+                memory_key=data.memory_key,
+                scope=data.scope,
+                project_id=data.project_id,
+            )
         )
 
         if existing is not None:
@@ -142,7 +170,9 @@ class MemoryService:
             existing.source_event_id = data.source_event_id
             existing.source_observation_id = data.source_observation_id
             existing.source_run_id = data.source_run_id
-            existing.authority_level = data.authority_level
+            existing.origin = data.origin
+            existing.origin_ref = data.origin_ref
+            existing.authority_level = authority
             existing.confidence = data.confidence
             existing.importance_score = data.importance_score
             existing.recency_score = 1.0
@@ -195,11 +225,13 @@ class MemoryService:
                 embedding=data.embedding,
                 payload=data.payload,
                 source_type=data.source_type,
+                origin=data.origin,
+                origin_ref=data.origin_ref,
                 source_event_id=data.source_event_id,
                 source_observation_id=data.source_observation_id,
                 source_run_id=data.source_run_id,
-                status="active",
-                authority_level=data.authority_level,
+                status="quarantined" if quarantine else "active",
+                authority_level=authority,
                 confidence=data.confidence,
                 importance_score=data.importance_score,
                 recency_score=1.0,
@@ -210,11 +242,26 @@ class MemoryService:
                 version=1,
             )
             memory = await self._repo.create(memory)
-            record_upsert("create")
+            if quarantine:
+                record_upsert("quarantine")
+                record_forgetting("quarantined")
+                logger.warning(
+                    "Quarantined memory %s from origin %s (confidence %.2f below %.2f)",
+                    memory.id,
+                    memory.origin,
+                    memory.confidence,
+                    settings.quarantine_confidence_threshold,
+                )
+            else:
+                record_upsert("create")
             if emit:
                 await emit_lifecycle_event(
                     self._session,
-                    event_type=MemoryEventTypes.MEMORY_CREATED,
+                    event_type=(
+                        MemoryEventTypes.MEMORY_QUARANTINED
+                        if quarantine
+                        else MemoryEventTypes.MEMORY_CREATED
+                    ),
                     user_id=memory.user_id,
                     data=memory_event_payload(memory),
                     project_id=memory.project_id,
@@ -304,6 +351,52 @@ class MemoryService:
                 project_id=memory.project_id,
                 memory_id=memory.id,
             )
+        return memory
+
+    # ── Quarantine review ───────────────────────────────────────
+    async def list_quarantined(
+        self,
+        *,
+        user_id: uuid.UUID | None = None,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> Sequence[Memory]:
+        """The review queue: writes held back for a human to look at."""
+        return await self._repo.list_filtered(
+            user_id=user_id, status="quarantined", limit=limit, offset=offset
+        )
+
+    async def release_quarantine(
+        self, memory_id: uuid.UUID, *, approve: bool, reviewer: str | None = None
+    ) -> Memory:
+        """Approve a quarantined memory into active recall, or reject it.
+
+        Approval is the only way a quarantined write becomes retrievable — the
+        decision is deliberately human, since the whole point of quarantine is
+        that the system could not vouch for the writer.
+        """
+        memory = await self.get_memory(memory_id)
+        if memory.status != "quarantined":
+            raise ConflictError(f"Memory {memory_id} is not quarantined (status={memory.status})")
+
+        memory.status = "active" if approve else "retracted"
+        memory.updated_at = datetime.now(UTC)
+        memory.payload = {
+            **(memory.payload or {}),
+            "quarantine_review": {
+                "approved": approve,
+                "reviewer": reviewer,
+                "reviewed_at": memory.updated_at.isoformat(),
+            },
+        }
+        await emit_lifecycle_event(
+            self._session,
+            event_type=MemoryEventTypes.MEMORY_RELEASED,
+            user_id=memory.user_id,
+            data={**memory_event_payload(memory), "approved": approve, "reviewer": reviewer},
+            project_id=memory.project_id,
+            memory_id=memory.id,
+        )
         return memory
 
     async def set_pinned(self, memory_id: uuid.UUID, *, pinned: bool) -> Memory:

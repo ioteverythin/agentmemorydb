@@ -31,6 +31,7 @@ Most agentic frameworks treat memory as an afterthought — a JSON blob, a vecto
 | **Temporal validity** | Bitemporal facts: query any point in time, plain SQL ([docs](docs/temporal-model.md)) | Latest-value only |
 | **Contradictions** | Conflicts resolved explicitly at write time — supersede or flag `disputed` + link | Stale facts silently coexist |
 | **Forgetting** | Decay + reconsolidation + audited erasure, GDPR-ready ([docs](docs/forgetting.md)) | Grows forever, or `DELETE` with no trace |
+| **Poisoning resistance** | Writes carry an `origin` that caps their authority; untrusted low-confidence writes are quarantined ([docs](docs/provenance.md)) | A scraped page can write itself in as authoritative |
 | **Audit trail** | Every mutation is versioned (lossless snapshots); every retrieval is logged | Fire-and-forget |
 | **Search** | Hybrid **RRF fusion** of dense vector + sparse full-text (BM25), re-ranked by recency + importance + authority + confidence | Vector-only |
 | **Context assembly** | Budget-capped, layer-ordered, injection-safe prompt block via `/memories/assemble-context` | Raw dump into prompt |
@@ -325,6 +326,10 @@ All endpoints live under `/api/v1`.
 | `POST` | `/forgetting/archive` | Run retention archival (dry run by default) |
 | `DELETE` | `/users/{id}/memories` | Erase all of a user's memories (needs `erase` scope) |
 | | | |
+| `GET` | `/provenance/policy` | Authority ceilings + quarantine rules in force |
+| `GET` | `/provenance/quarantine` | Writes held back for review |
+| `POST` | `/provenance/quarantine/{id}/review` | Approve into active recall, or reject |
+| | | |
 | `POST` | `/api-keys` | Create API key |
 | `DELETE` | `/api-keys/{id}` | Revoke API key |
 | `POST` | `/webhooks` | Register webhook |
@@ -399,6 +404,8 @@ All settings are driven by environment variables (or `.env`):
 | `ENABLE_RECONSOLIDATION` | `false` | Recall boosts a memory's importance |
 | `RECONSOLIDATION_BOOST` | `0.02` | Per-recall importance bump (capped at 1.0) |
 | `MCP_ENABLE_FORGET` | `false` | Expose the irreversible `forget_memory` MCP tool |
+| `ENABLE_POISONING_RESISTANCE` | `false` | Authority ceilings + quarantine by write origin ([docs](docs/provenance.md)) |
+| `QUARANTINE_CONFIDENCE_THRESHOLD` | `0.6` | Untrusted writes below this confidence are quarantined |
 
 ---
 

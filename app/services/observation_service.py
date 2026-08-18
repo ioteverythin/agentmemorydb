@@ -18,6 +18,13 @@ from app.services.lifecycle import emit_lifecycle_event
 from app.utils.masking import get_default_engine
 from app.ws import MemoryEventTypes
 
+# Maps an event's type onto the trust domain the content arrived from.
+_ORIGIN_BY_EVENT_TYPE = {
+    "user_input": "user",
+    "tool_result": "tool_output",
+    "model_output": "agent_inference",
+}
+
 
 def _mask_if_enabled(text: str | None) -> str | None:
     if not text:
@@ -52,6 +59,8 @@ class ObservationService:
             content=masked_content,
             observation_type=data.observation_type,
             source_type=data.source_type,
+            origin=data.origin,
+            origin_ref=data.origin_ref,
             confidence=data.confidence,
             metadata_=data.metadata,
             status="pending",
@@ -86,6 +95,10 @@ class ObservationService:
         if event.event_type in extractable_types and event.content:
             source_type = "user_input" if event.event_type == "user_input" else "system_inference"
             confidence = 0.8 if event.event_type == "user_input" else 0.5
+            # The event type *is* the trust domain: what the user typed is the
+            # user speaking; a tool result came from outside the agent; anything
+            # else is the agent's own inference.
+            origin = _ORIGIN_BY_EVENT_TYPE.get(event.event_type, "agent_inference")
 
             obs = Observation(
                 event_id=event.id,
@@ -94,6 +107,8 @@ class ObservationService:
                 content=_mask_if_enabled(event.content) or event.content,
                 observation_type=event.event_type,
                 source_type=source_type,
+                origin=origin,
+                origin_ref=str(event.id),
                 confidence=confidence,
                 metadata_={"extraction_method": "rule_based", "event_type": event.event_type},
                 status="pending",
@@ -155,6 +170,11 @@ class ObservationService:
             scope=req.scope,
             content=obs.content,
             source_type="human_verified" if req.human_verified else obs.source_type,
+            # A human vouching for a fact raises its trust domain to `operator`;
+            # otherwise the observation's own origin is carried through, so the
+            # memory's authority ceiling reflects where the content came from.
+            origin=("operator" if req.human_verified else (req.origin or obs.origin)),
+            origin_ref=obs.origin_ref,
             source_event_id=obs.event_id,
             source_observation_id=obs.id,
             source_run_id=obs.run_id,

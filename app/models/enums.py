@@ -25,6 +25,9 @@ class MemoryStatus(enum.StrEnum):
     # Conflicts with a higher-confidence memory; retained and linked via a
     # ``contradicts`` edge, but excluded from default retrieval and assembly.
     DISPUTED = "disputed"
+    # Written from an untrusted origin below the confidence bar. Stored and
+    # reviewable, but never retrieved or assembled until a human releases it.
+    QUARANTINED = "quarantined"
 
 
 class SourceType(enum.StrEnum):
@@ -35,6 +38,36 @@ class SourceType(enum.StrEnum):
     SYSTEM_INFERENCE = "system_inference"
     HUMAN_VERIFIED = "human_verified"
     IMPORTED = "imported"
+
+
+class MemoryOrigin(enum.StrEnum):
+    """*Who* wrote a fact — the trust domain it entered the system from.
+
+    Distinct from :class:`SourceType`, which describes the *kind* of statement
+    (an inference, a tool result, a verified fact). Origin answers the security
+    question instead: how much should this writer be trusted to assert things?
+
+    Ordered here from most to least trusted. Each origin carries an authority
+    ceiling (see :mod:`app.utils.provenance`), so a low-trust writer cannot
+    claim high authority and outrank what the user actually said.
+    """
+
+    # A human operator/administrator acting on the system directly.
+    OPERATOR = "operator"
+    # The end user stated this themselves.
+    USER = "user"
+    # EngramDB itself — distillation, consolidation, reflection.
+    SYSTEM = "system"
+    # The agent concluded this. The default: it is what an unattributed write is.
+    AGENT_INFERENCE = "agent_inference"
+    # Returned by a tool the agent invoked.
+    TOOL_OUTPUT = "tool_output"
+    # Bulk import / migration from another store.
+    IMPORTED = "imported"
+    # Content from outside the trust boundary: a fetched web page, a third-party
+    # API, an uploaded document, another user's message. Anything here may be
+    # adversarial — this is the origin prompt-injection arrives through.
+    EXTERNAL_INGEST = "external_ingest"
 
 
 class EventType(enum.StrEnum):
