@@ -69,7 +69,8 @@ class MaintenanceScheduler:
     4. cleanup_expired — retract memories past their expires_at (audited)
     5. prune_access_logs — remove old access log entries
     6. distill_memories — roll atoms up the memory pyramid
-    7. decay_importance — Ebbinghaus decay for unused memories (opt-in)
+    7. reflect_and_promote — sleep-time reflection over memory clusters (opt-in)
+    8. decay_importance — Ebbinghaus decay for unused memories (opt-in)
     """
 
     def __init__(self) -> None:
@@ -115,6 +116,14 @@ class MaintenanceScheduler:
                 handler=self._distill_memories,
                 interval_seconds=settings.scheduler_distillation_interval,
                 enabled=settings.scheduler_enable_distillation,
+            ),
+            ScheduledJob(
+                name="reflect_and_promote",
+                handler=self._reflect_and_promote,
+                interval_seconds=settings.scheduler_reflection_interval,
+                # Double-gated like decay: the feature flag must also be on, so
+                # a default deployment never calls an LLM.
+                enabled=settings.scheduler_enable_reflection and settings.enable_reflection,
             ),
             ScheduledJob(
                 name="decay_importance",
@@ -298,6 +307,48 @@ class MaintenanceScheduler:
             report = await ForgettingService(session).retract_expired()
             await session.commit()
             return report
+
+    async def _reflect_and_promote(self) -> dict[str, Any]:
+        """Sleep-time consolidation: derive insights from clusters of memories.
+
+        Runs per user, and reports skips explicitly — a pass that produced
+        nothing because no LLM is configured must not look like a pass that
+        found nothing worth saying.
+        """
+        from sqlalchemy import text
+
+        from app.services.reflection_service import ReflectionService
+
+        if not settings.enable_reflection:
+            return {"skipped": True, "reason": "ENABLE_REFLECTION is false"}
+
+        async with async_session_factory() as session:
+            result = await session.execute(
+                text(
+                    "SELECT DISTINCT user_id FROM memories "
+                    "WHERE status = 'active' AND layer = 'atom' LIMIT 100"
+                )
+            )
+            user_ids = [row[0] for row in result.fetchall()]
+
+            svc = ReflectionService(session)
+            insights = 0
+            skipped: dict[str, int] = {}
+            for uid in user_ids:
+                try:
+                    run = await svc.reflect(user_id=uid)
+                    insights += run.insights_created
+                    if run.status != "completed" and run.skipped_reason:
+                        skipped[run.skipped_reason] = skipped.get(run.skipped_reason, 0) + 1
+                except Exception as exc:
+                    logger.warning("Reflection failed for user %s: %s", uid, exc)
+
+            await session.commit()
+            return {
+                "users_processed": len(user_ids),
+                "insights_created": insights,
+                "skipped": skipped,
+            }
 
     async def _decay_importance(self) -> dict[str, Any]:
         """Decay importance for unused memories (no-op unless ENABLE_DECAY)."""

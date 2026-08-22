@@ -24,6 +24,7 @@ import type {
   ForgettingLogEntry,
   ErasureResponse,
   OriginPolicy,
+  ConsolidationRun,
 } from './types';
 
 // ── HTTP Helper ─────────────────────────────────────────────────
@@ -304,6 +305,26 @@ class ConsolidationClient {
       similarity_threshold: input.similarityThreshold ?? 0.92,
       dry_run: input.dryRun ?? true,
     });
+  }
+
+  /**
+   * Run a sleep-time reflection pass, deriving insights from clusters of
+   * related memories. Returns the run record even when it produced nothing.
+   */
+  async reflect(userId: string, opts?: { projectId?: string; dryRun?: boolean }): Promise<ConsolidationRun> {
+    const query = new URLSearchParams({ user_id: userId });
+    if (opts?.projectId) query.set('project_id', opts.projectId);
+    if (opts?.dryRun) query.set('dry_run', 'true');
+    return this.http.post(`/consolidation/reflect?${query.toString()}`);
+  }
+
+  /** Reflection pass history, newest first. */
+  async runs(params?: { userId?: string; limit?: number }): Promise<ConsolidationRun[]> {
+    const query = new URLSearchParams();
+    if (params?.userId) query.set('user_id', params.userId);
+    if (params?.limit) query.set('limit', String(params.limit));
+    const qs = query.toString();
+    return this.http.get(`/consolidation/runs${qs ? `?${qs}` : ''}`);
   }
 }
 

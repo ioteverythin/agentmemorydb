@@ -340,6 +340,35 @@ class EngramDBClient:
         self._raise_for_status(resp)
         return resp.json()
 
+    # ── Reflection (sleep-time consolidation) ───────────────────
+
+    async def reflect(
+        self, user_id: str, *, project_id: str | None = None, dry_run: bool = False
+    ) -> dict:
+        """Run a reflection pass for a user.
+
+        Returns the run record whether or not it produced insights — a skip is a
+        result, and ``skipped_reason`` says which one (notably
+        ``no_llm_provider``, which means the feature is on but has no model).
+        """
+        params: dict[str, Any] = {"user_id": user_id, "dry_run": dry_run}
+        if project_id:
+            params["project_id"] = project_id
+        resp = await self._client.post("/api/v1/consolidation/reflect", params=params)
+        self._raise_for_status(resp)
+        return resp.json()
+
+    async def consolidation_runs(
+        self, *, user_id: str | None = None, limit: int = 50, offset: int = 0
+    ) -> list[dict]:
+        """Reflection pass history, newest first."""
+        params: dict[str, Any] = {"limit": limit, "offset": offset}
+        if user_id:
+            params["user_id"] = user_id
+        resp = await self._client.get("/api/v1/consolidation/runs", params=params)
+        self._raise_for_status(resp)
+        return resp.json()
+
     # ── Provenance ──────────────────────────────────────────────
 
     async def origin_policy(self) -> dict:

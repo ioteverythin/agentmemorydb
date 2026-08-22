@@ -31,6 +31,7 @@ Most agentic frameworks treat memory as an afterthought — a JSON blob, a vecto
 | **Temporal validity** | Bitemporal facts: query any point in time, plain SQL ([docs](docs/temporal-model.md)) | Latest-value only |
 | **Contradictions** | Conflicts resolved explicitly at write time — supersede or flag `disputed` + link | Stale facts silently coexist |
 | **Forgetting** | Decay + reconsolidation + audited erasure, GDPR-ready ([docs](docs/forgetting.md)) | Grows forever, or `DELETE` with no trace |
+| **Reflection** | Sleep-time consolidation derives insights from memory clusters, each traceable to its evidence ([docs](docs/reflection.md)) | Memories stay flat — no synthesis |
 | **Poisoning resistance** | Writes carry an `origin` that caps their authority; untrusted low-confidence writes are quarantined ([docs](docs/provenance.md)) | A scraped page can write itself in as authoritative |
 | **Audit trail** | Every mutation is versioned (lossless snapshots); every retrieval is logged | Fire-and-forget |
 | **Search** | Hybrid **RRF fusion** of dense vector + sparse full-text (BM25), re-ranked by recency + importance + authority + confidence | Vector-only |
@@ -317,6 +318,8 @@ All endpoints live under `/api/v1`.
 | `GET` | `/consolidation/duplicates` | Find exact duplicates |
 | `POST` | `/consolidation/merge` | Merge two memories |
 | `POST` | `/consolidation/auto` | Auto-consolidate all duplicates |
+| `POST` | `/consolidation/reflect` | Run a sleep-time reflection pass |
+| `GET` | `/consolidation/runs` | Reflection pass history (incl. skip reasons) |
 | | | |
 | `GET` | `/data/export` | Export memories as JSON |
 | `POST` | `/data/import` | Import memories from JSON |
@@ -404,6 +407,10 @@ All settings are driven by environment variables (or `.env`):
 | `ENABLE_RECONSOLIDATION` | `false` | Recall boosts a memory's importance |
 | `RECONSOLIDATION_BOOST` | `0.02` | Per-recall importance bump (capped at 1.0) |
 | `MCP_ENABLE_FORGET` | `false` | Expose the irreversible `forget_memory` MCP tool |
+| `ENABLE_REFLECTION` | `false` | Sleep-time consolidation over memory clusters ([docs](docs/reflection.md)) |
+| `REFLECTION_MIN_CLUSTER_SIZE` | `3` | Memories needed before a cluster is reflected on |
+| `REFLECTION_SIMILARITY_THRESHOLD` | `0.75` | Cosine similarity to join a cluster |
+| `SCHEDULER_REFLECTION_INTERVAL` | `86400` | Seconds between reflection passes |
 | `ENABLE_POISONING_RESISTANCE` | `false` | Authority ceilings + quarantine by write origin ([docs](docs/provenance.md)) |
 | `QUARANTINE_CONFIDENCE_THRESHOLD` | `0.6` | Untrusted writes below this confidence are quarantined |
 
@@ -603,6 +610,7 @@ Built-in cron-based maintenance jobs:
 | `cleanup_expired` | 1 hour | Retract memories past `expires_at` (audited) |
 | `prune_access_logs` | 24 hours | Delete old access log entries |
 | `distill_memories` | 6 hours | Roll atoms up the memory pyramid |
+| `reflect_and_promote` | 24 hours | Sleep-time reflection — **requires `ENABLE_REFLECTION`** |
 | `decay_importance` | 6 hours | Ebbinghaus decay — **requires `ENABLE_DECAY`** |
 
 Configure via `SCHEDULER_*` environment variables. All jobs are individually

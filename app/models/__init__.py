@@ -3,6 +3,7 @@
 from app.models.agent_run import AgentRun
 from app.models.api_key import APIKey
 from app.models.artifact import ArtifactMetadata
+from app.models.consolidation_run import ConsolidationRun
 from app.models.enums import (
     ALLOWED_TASK_TRANSITIONS,
     EventType,
@@ -36,6 +37,7 @@ __all__ = [
     "APIKey",
     "AgentRun",
     "ArtifactMetadata",
+    "ConsolidationRun",
     "Event",
     "EventType",
     "ForgettingLog",

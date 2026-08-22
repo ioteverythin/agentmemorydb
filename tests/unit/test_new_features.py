@@ -603,7 +603,7 @@ class TestMaintenanceScheduler:
 
     def test_scheduler_has_all_jobs(self):
         scheduler = MaintenanceScheduler()
-        assert len(scheduler._jobs) == 7
+        assert len(scheduler._jobs) == 8
 
     def test_job_names(self):
         scheduler = MaintenanceScheduler()
@@ -616,6 +616,7 @@ class TestMaintenanceScheduler:
             "prune_access_logs",
             "distill_memories",
             "decay_importance",
+            "reflect_and_promote",
         }
 
     def test_jobs_use_settings_intervals(self):
@@ -651,7 +652,7 @@ class TestMaintenanceScheduler:
         status = await scheduler.get_status()
 
         assert status["running"] is False
-        assert len(status["jobs"]) == 7
+        assert len(status["jobs"]) == 8
         for job_status in status["jobs"]:
             assert "name" in job_status
             assert "enabled" in job_status

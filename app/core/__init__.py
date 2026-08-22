@@ -46,6 +46,19 @@ class Settings(BaseSettings):
     enable_reconsolidation: bool = False
     reconsolidation_boost: float = 0.02
 
+    # ── Sleep-time consolidation (reflection) ────────────────────
+    # A slow, off-request-path pass that derives higher-order insights from
+    # clusters of related memories. Requires an LLM provider; without one every
+    # run is recorded as skipped rather than silently producing nothing.
+    enable_reflection: bool = False
+    reflection_lookback_hours: int = 168  # 7 days of recent atoms
+    reflection_max_memories: int = 200  # candidates considered per pass
+    reflection_min_cluster_size: int = 3  # a pair is a coincidence, not a pattern
+    reflection_similarity_threshold: float = 0.75
+    reflection_max_clusters: int = 10  # caps LLM calls per pass
+    scheduler_reflection_interval: int = 86400  # daily — this is the "sleep" cycle
+    scheduler_enable_reflection: bool = True
+
     # ── Write provenance & poisoning resistance ──────────────────
     # When True, each write's ``origin`` caps the ``authority_level`` it may
     # claim, and low-confidence writes from untrusted origins are quarantined

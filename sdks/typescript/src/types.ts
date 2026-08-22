@@ -242,3 +242,27 @@ export interface OriginPolicy {
   authority_ceilings: Record<string, number>;
   untrusted_origins: string[];
 }
+
+// ── Sleep-time consolidation (reflection) ───────────────────────
+
+/**
+ * One reflection pass. A `skipped` status with a `skipped_reason` is the
+ * normal, informative outcome when reflection has nothing to work with —
+ * `no_llm_provider` in particular means the feature is on but has no model.
+ */
+export interface ConsolidationRun {
+  id: string;
+  user_id: string;
+  project_id: string | null;
+  kind: string;
+  status: 'completed' | 'skipped' | 'failed';
+  skipped_reason: string | null;
+  memories_considered: number;
+  clusters_found: number;
+  insights_created: number;
+  details: Record<string, unknown> | null;
+  error: string | null;
+  duration_ms: number;
+  started_at: string;
+  finished_at: string | null;
+}

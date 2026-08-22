@@ -47,4 +47,5 @@ export type {
   ErasureResponse,
   MemoryOrigin,
   OriginPolicy,
+  ConsolidationRun,
 } from './types';

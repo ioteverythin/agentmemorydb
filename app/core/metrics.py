@@ -80,6 +80,19 @@ if PROMETHEUS_AVAILABLE:
         registry=REGISTRY,
     )
 
+    REFLECTIONS = Counter(
+        "engramdb_reflections_total",
+        "Sleep-time reflection passes by outcome",
+        ["status"],  # completed | skipped | failed
+        registry=REGISTRY,
+    )
+
+    REFLECTION_INSIGHTS = Counter(
+        "engramdb_reflection_insights_total",
+        "Insights written by sleep-time reflection",
+        registry=REGISTRY,
+    )
+
     AUTHORITY_CLAMPS = Counter(
         "engramdb_authority_clamps_total",
         "Writes whose requested authority exceeded their origin's ceiling",
@@ -186,6 +199,18 @@ def record_forgetting(action: str, count: int = 1) -> None:
     """Record forgetting activity (decay, expiry, erasure, quarantine)."""
     if PROMETHEUS_AVAILABLE and count:
         MEMORY_FORGETTING.labels(action=action).inc(count)
+
+
+def record_reflection(status: str, insights: int = 0) -> None:
+    """Record a reflection pass and any insights it wrote.
+
+    The ``status`` label is what makes a misconfigured deployment visible: a
+    steady stream of ``skipped`` is a reflection system that is not reflecting.
+    """
+    if PROMETHEUS_AVAILABLE:
+        REFLECTIONS.labels(status=status).inc()
+        if insights:
+            REFLECTION_INSIGHTS.inc(insights)
 
 
 def record_authority_clamp(origin: str) -> None:
