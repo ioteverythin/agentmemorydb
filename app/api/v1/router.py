@@ -11,6 +11,7 @@ from app.api.v1 import (
     consolidation,
     distillation,
     events,
+    forgetting,
     graph,
     health,
     import_export,
@@ -20,6 +21,7 @@ from app.api.v1 import (
     memory_links,
     observations,
     projects,
+    provenance,
     retrieval_logs,
     runs,
     scheduler,
@@ -55,3 +57,5 @@ api_router.include_router(import_export.router, prefix="/data", tags=["data"])
 api_router.include_router(scheduler.router, prefix="/scheduler", tags=["scheduler"])
 api_router.include_router(mcp.router, prefix="/mcp", tags=["mcp"])
 api_router.include_router(masking.router, prefix="/masking", tags=["masking"])
+api_router.include_router(forgetting.router, prefix="/forgetting", tags=["forgetting"])
+api_router.include_router(provenance.router, prefix="/provenance", tags=["provenance"])

@@ -28,6 +28,12 @@ Most agentic frameworks treat memory as an afterthought — a JSON blob, a vecto
 |---------|---------------|----------------------|
 | **Storage** | PostgreSQL — one DB you already know | Redis, Pinecone, custom |
 | **Memory pyramid** | First-class `raw`→`atom`→`scenario`→`persona` layers in SQL | Flat records or files on disk |
+| **Temporal validity** | Bitemporal facts: query any point in time, plain SQL ([docs](docs/temporal-model.md)) | Latest-value only |
+| **Contradictions** | Conflicts resolved explicitly at write time — supersede or flag `disputed` + link | Stale facts silently coexist |
+| **Forgetting** | Decay + reconsolidation + audited erasure, GDPR-ready ([docs](docs/forgetting.md)) | Grows forever, or `DELETE` with no trace |
+| **Memory graph** | `related_to` edges built automatically on write, deduplicated in both directions ([docs](docs/autolinking.md)) | Links only if you write them yourself |
+| **Reflection** | Sleep-time consolidation derives insights from memory clusters, each traceable to its evidence ([docs](docs/reflection.md)) | Memories stay flat — no synthesis |
+| **Poisoning resistance** | Writes carry an `origin` that caps their authority; untrusted low-confidence writes are quarantined ([docs](docs/provenance.md)) | A scraped page can write itself in as authoritative |
 | **Audit trail** | Every mutation is versioned (lossless snapshots); every retrieval is logged | Fire-and-forget |
 | **Search** | Hybrid **RRF fusion** of dense vector + sparse full-text (BM25), re-ranked by recency + importance + authority + confidence | Vector-only |
 | **Context assembly** | Budget-capped, layer-ordered, injection-safe prompt block via `/memories/assemble-context` | Raw dump into prompt |
@@ -297,6 +303,10 @@ All endpoints live under `/api/v1`.
 | `GET` | `/memories` | List with filters |
 | `PATCH` | `/memories/{id}/status` | Update status |
 | `GET` | `/memories/{id}/versions` | Version history |
+| `GET` | `/memories/{id}/timeline` | Supersession chain with per-generation diffs |
+| `POST` | `/memories/{id}/invalidate` | Close a fact's validity window (no replacement) |
+| `PATCH` | `/memories/{id}/pin` | Pin/unpin (exempt from decay + archival) |
+| `DELETE` | `/memories/{id}` | Archive, or `?mode=erase` to hard-erase (needs `erase` scope) |
 | `GET` | `/memories/{id}/links` | Related memories |
 | `POST` | `/memory-links` | Create link |
 | | | |
@@ -305,13 +315,26 @@ All endpoints live under `/api/v1`.
 | | | |
 | `POST` | `/graph/expand` | BFS graph traversal from seed memory |
 | `POST` | `/graph/shortest-path` | Shortest path between two memories |
+| `POST` | `/graph/autolink-backfill` | Autolink a user's existing memories |
+| `POST` | `/memories/{id}/autolink` | Link one memory to its neighbours now |
 | | | |
 | `GET` | `/consolidation/duplicates` | Find exact duplicates |
 | `POST` | `/consolidation/merge` | Merge two memories |
 | `POST` | `/consolidation/auto` | Auto-consolidate all duplicates |
+| `POST` | `/consolidation/reflect` | Run a sleep-time reflection pass |
+| `GET` | `/consolidation/runs` | Reflection pass history (incl. skip reasons) |
 | | | |
 | `GET` | `/data/export` | Export memories as JSON |
 | `POST` | `/data/import` | Import memories from JSON |
+| | | |
+| `GET` | `/forgetting/log` | Forgetting audit trail (decay, expiry, erasure) |
+| `POST` | `/forgetting/decay` | Run importance decay (dry run by default) |
+| `POST` | `/forgetting/archive` | Run retention archival (dry run by default) |
+| `DELETE` | `/users/{id}/memories` | Erase all of a user's memories (needs `erase` scope) |
+| | | |
+| `GET` | `/provenance/policy` | Authority ceilings + quarantine rules in force |
+| `GET` | `/provenance/quarantine` | Writes held back for review |
+| `POST` | `/provenance/quarantine/{id}/review` | Approve into active recall, or reject |
 | | | |
 | `POST` | `/api-keys` | Create API key |
 | `DELETE` | `/api-keys/{id}` | Revoke API key |
@@ -373,6 +396,29 @@ All settings are driven by environment variables (or `.env`):
 | `SCHEDULER_CONSOLIDATION_INTERVAL` | `3600` | Seconds between consolidation runs |
 | `SCHEDULER_ARCHIVE_INTERVAL` | `7200` | Seconds between archive runs |
 | `SCHEDULER_STALE_THRESHOLD_DAYS` | `90` | Archive memories older than N days |
+| `ENABLE_TEMPORAL_VALIDITY` | `false` | Default retrieval to currently-valid facts only ([docs](docs/temporal-model.md)) |
+| `ENABLE_CONTRADICTION_DETECTION` | `false` | Resolve conflicting facts at promotion time |
+| `CONTRADICTION_STRATEGY` | `heuristic` | `heuristic` or `llm` (fails closed without a provider) |
+| `CONTRADICTION_SIMILARITY_THRESHOLD` | `0.85` | Similarity above which two facts are compared |
+| `CONTRADICTION_CANDIDATE_TOP_K` | `5` | Incumbents considered per new observation |
+| `LLM_PROVIDER` | `none` | `none` or `openai` — powers `llm` strategies |
+| `LLM_MODEL` | `gpt-4o-mini` | Model for LLM-backed strategies |
+| `ENABLE_DECAY` | `false` | Ebbinghaus importance decay ([docs](docs/forgetting.md)) |
+| `DECAY_HALF_LIFE_HOURS` | `720` | Importance half-life in hours (30 days) |
+| `DECAY_FLOOR` | `0.05` | Importance never decays below this |
+| `SCHEDULER_DECAY_INTERVAL` | `21600` | Seconds between decay runs |
+| `ENABLE_RECONSOLIDATION` | `false` | Recall boosts a memory's importance |
+| `RECONSOLIDATION_BOOST` | `0.02` | Per-recall importance bump (capped at 1.0) |
+| `MCP_ENABLE_FORGET` | `false` | Expose the irreversible `forget_memory` MCP tool |
+| `ENABLE_AUTOLINK` | `false` | Link new memories to topical neighbours ([docs](docs/autolinking.md)) |
+| `AUTOLINK_SIMILARITY_THRESHOLD` | `0.85` | Cosine similarity required to autolink |
+| `AUTOLINK_MAX_LINKS` | `3` | Maximum automatic edges per write |
+| `ENABLE_REFLECTION` | `false` | Sleep-time consolidation over memory clusters ([docs](docs/reflection.md)) |
+| `REFLECTION_MIN_CLUSTER_SIZE` | `3` | Memories needed before a cluster is reflected on |
+| `REFLECTION_SIMILARITY_THRESHOLD` | `0.75` | Cosine similarity to join a cluster |
+| `SCHEDULER_REFLECTION_INTERVAL` | `86400` | Seconds between reflection passes |
+| `ENABLE_POISONING_RESISTANCE` | `false` | Authority ceilings + quarantine by write origin ([docs](docs/provenance.md)) |
+| `QUARANTINE_CONFIDENCE_THRESHOLD` | `0.6` | Untrusted writes below this confidence are quarantined |
 
 ---
 
@@ -560,17 +606,23 @@ Three roles: `engramdb_anon` (read-only), `engramdb_user` (CRUD on own data), `e
 
 ## Scheduled Maintenance
 
-Built-in cron-based maintenance with 5 auto-running jobs:
+Built-in cron-based maintenance jobs:
 
 | Job | Default Interval | Description |
 |-----|-----------------|-------------|
 | `consolidate_duplicates` | 1 hour | Auto-merge near-duplicate memories |
-| `archive_stale` | 2 hours | Archive old low-importance memories |
+| `archive_stale` | 2 hours | Archive low-retention memories (audited) |
 | `recompute_recency` | 30 min | Refresh recency scores for active memories |
-| `cleanup_expired` | 1 hour | Retract memories past `expires_at` |
+| `cleanup_expired` | 1 hour | Retract memories past `expires_at` (audited) |
 | `prune_access_logs` | 24 hours | Delete old access log entries |
+| `distill_memories` | 6 hours | Roll atoms up the memory pyramid |
+| `reflect_and_promote` | 24 hours | Sleep-time reflection — **requires `ENABLE_REFLECTION`** |
+| `decay_importance` | 6 hours | Ebbinghaus decay — **requires `ENABLE_DECAY`** |
 
-Configure via `SCHEDULER_*` environment variables. All jobs are individually toggleable.
+Configure via `SCHEDULER_*` environment variables. All jobs are individually
+toggleable. `decay_importance` is double-gated: it needs both
+`SCHEDULER_ENABLE_DECAY` and the `ENABLE_DECAY` feature flag, so a default
+deployment decays nothing. See [docs/forgetting.md](docs/forgetting.md).
 
 ---
 

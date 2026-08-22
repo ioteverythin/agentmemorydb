@@ -43,4 +43,9 @@ export type {
   LinkCreateInput,
   ScoreBreakdown,
   HealthResponse,
+  ForgettingLogEntry,
+  ErasureResponse,
+  MemoryOrigin,
+  OriginPolicy,
+  ConsolidationRun,
 } from './types';

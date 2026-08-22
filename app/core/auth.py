@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import secrets
 import uuid
+from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
 
 from fastapi import Depends, HTTPException, Security, status
@@ -101,19 +102,39 @@ def enforce_tenant(api_key: APIKey | None, user_id: uuid.UUID | None) -> None:
         )
 
 
-def require_scope(scope: str):
+def assert_scope(api_key: APIKey | None, scope: str, *, allow_unscoped: bool = True) -> None:
+    """Assert that ``api_key`` carries ``scope``, raising 403 otherwise.
+
+    A no-op when auth is disabled (``api_key is None``). Use this — rather than
+    the :func:`require_scope` dependency — when the requirement depends on the
+    request itself, e.g. only the destructive ``mode=erase`` branch of a delete
+    needs the ``erase`` scope.
+
+    ``allow_unscoped`` keeps the historical behaviour that a key with *no*
+    declared scopes is unrestricted. Irreversible operations pass ``False``: a
+    key must name ``erase`` (or ``*``) explicitly to hard-delete data, so
+    granting erasure is never an accident of leaving ``scopes`` blank.
+    """
+    if api_key is None:
+        return  # auth disabled
+    if not api_key.scopes:
+        if allow_unscoped:
+            return
+    else:
+        allowed = {s.strip() for s in api_key.scopes.split(",")}
+        if "*" in allowed or scope in allowed:
+            return
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail=f"API key lacks required scope: {scope}",
+    )
+
+
+def require_scope(scope: str) -> Callable[..., Awaitable[APIKey | None]]:
     """Dependency factory that checks if the API key has a required scope."""
 
     async def _check(api_key: APIKey | None = Depends(get_current_api_key)) -> APIKey | None:
-        if api_key is None:
-            return None  # auth disabled
-        if api_key.scopes:
-            allowed = {s.strip() for s in api_key.scopes.split(",")}
-            if "*" not in allowed and scope not in allowed:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail=f"API key lacks required scope: {scope}",
-                )
+        assert_scope(api_key, scope)
         return api_key
 
     return _check

@@ -7,15 +7,28 @@ export interface Memory {
   memory_type: 'semantic' | 'episodic' | 'procedural' | 'working';
   content: string;
   scope: string;
-  status: 'active' | 'archived' | 'retracted';
+  status: 'active' | 'archived' | 'retracted' | 'disputed' | 'quarantined' | 'stale';
   version: number;
   source_type: string;
+  /** Trust domain the write came from — drives the provenance badge. */
+  origin?: MemoryOrigin;
+  origin_ref?: string | null;
+  pinned?: boolean;
   authority_level: number;
   confidence: number;
   payload: Record<string, unknown>;
   created_at: string;
   updated_at: string;
 }
+
+export type MemoryOrigin =
+  | 'operator'
+  | 'user'
+  | 'system'
+  | 'agent_inference'
+  | 'tool_output'
+  | 'imported'
+  | 'external_ingest';
 
 export interface Score {
   vector_score: number;

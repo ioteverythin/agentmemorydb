@@ -1,16 +1,20 @@
-"""Consolidation endpoints — detect and merge duplicate memories."""
+"""Consolidation endpoints — duplicate merging and sleep-time reflection."""
 
 from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.auth import enforce_tenant, get_current_api_key
 from app.db.session import get_session
+from app.models.api_key import APIKey
+from app.schemas.consolidation import ConsolidationRunResponse
 from app.schemas.memory import MemoryResponse
 from app.services.consolidation_service import ConsolidationService
+from app.services.reflection_service import ReflectionService
 
 router = APIRouter()
 
@@ -76,3 +80,45 @@ async def auto_consolidate(
     svc = ConsolidationService(session)
     result = await svc.auto_consolidate(user_id)
     return AutoConsolidateResponse(**result)
+
+
+# ── Sleep-time consolidation (reflection) ───────────────────────
+
+
+@router.get("/runs", response_model=list[ConsolidationRunResponse])
+async def list_consolidation_runs(
+    user_id: uuid.UUID | None = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
+    session: AsyncSession = Depends(get_session),
+    api_key: APIKey | None = Depends(get_current_api_key),
+) -> list[ConsolidationRunResponse]:
+    """Reflection pass history, newest first.
+
+    ``status="skipped"`` with ``skipped_reason="no_llm_provider"`` is the row to
+    look for when reflection appears to be doing nothing: it means the feature is
+    on but has no model to think with.
+    """
+    enforce_tenant(api_key, user_id)
+    runs = await ReflectionService(session).list_runs(user_id=user_id, limit=limit, offset=offset)
+    return [ConsolidationRunResponse.model_validate(r) for r in runs]
+
+
+@router.post("/reflect", response_model=ConsolidationRunResponse)
+async def run_reflection(
+    user_id: uuid.UUID,
+    project_id: uuid.UUID | None = Query(default=None),
+    dry_run: bool = Query(
+        default=False, description="Cluster and report without calling the LLM or writing."
+    ),
+    session: AsyncSession = Depends(get_session),
+    api_key: APIKey | None = Depends(get_current_api_key),
+) -> ConsolidationRunResponse:
+    """Run a reflection pass now for one user.
+
+    Returns the run record whether or not it produced anything — a skip is a
+    result, and its ``skipped_reason`` says which one.
+    """
+    enforce_tenant(api_key, user_id)
+    run = await ReflectionService(session).reflect(user_id, project_id=project_id, dry_run=dry_run)
+    return ConsolidationRunResponse.model_validate(run)

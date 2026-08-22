@@ -34,6 +34,69 @@ class Settings(BaseSettings):
     hnsw_ef_construction: int = 64  # size of dynamic candidate list during build
     hnsw_ef_search: int = 40  # size of dynamic candidate list during search
 
+    # ── Forgetting: decay & reconsolidation (Ebbinghaus-style) ───
+    # Importance decays exponentially since last access; frequently-recalled
+    # memories are boosted on retrieval, so use resists decay. Pinned memories
+    # are never decayed or archived.
+    enable_decay: bool = False
+    decay_half_life_hours: float = 720.0  # 30 days
+    decay_floor: float = 0.05
+    scheduler_decay_interval: int = 21600  # 6h
+    scheduler_enable_decay: bool = True
+    enable_reconsolidation: bool = False
+    reconsolidation_boost: float = 0.02
+
+    # ── Automatic memory linking ─────────────────────────────────
+    # On write, link a memory to its nearest topical neighbours so graph
+    # traversal reaches more than what somebody explicitly linked. A high bar
+    # and a low cap: linking everything to everything is the same as linking
+    # nothing.
+    enable_autolink: bool = False
+    autolink_similarity_threshold: float = 0.85
+    autolink_max_links: int = 3  # per write
+    autolink_candidate_pool: int = 100  # recent memories scanned per write
+
+    # ── Sleep-time consolidation (reflection) ────────────────────
+    # A slow, off-request-path pass that derives higher-order insights from
+    # clusters of related memories. Requires an LLM provider; without one every
+    # run is recorded as skipped rather than silently producing nothing.
+    enable_reflection: bool = False
+    reflection_lookback_hours: int = 168  # 7 days of recent atoms
+    reflection_max_memories: int = 200  # candidates considered per pass
+    reflection_min_cluster_size: int = 3  # a pair is a coincidence, not a pattern
+    reflection_similarity_threshold: float = 0.75
+    reflection_max_clusters: int = 10  # caps LLM calls per pass
+    scheduler_reflection_interval: int = 86400  # daily — this is the "sleep" cycle
+    scheduler_enable_reflection: bool = True
+
+    # ── Write provenance & poisoning resistance ──────────────────
+    # When True, each write's ``origin`` caps the ``authority_level`` it may
+    # claim, and low-confidence writes from untrusted origins are quarantined
+    # instead of entering active recall. Off by default: enabling it can only
+    # lower authority or hold a write back, never the reverse.
+    enable_poisoning_resistance: bool = False
+    quarantine_confidence_threshold: float = 0.6
+
+    # ── LLM provider (optional; powers contradiction + reflection) ─
+    llm_provider: str = "none"  # none | openai
+    llm_model: str = "gpt-4o-mini"
+    llm_base_url: str | None = None  # set for an OpenAI-compatible gateway
+    llm_temperature: float = 0.0
+    llm_timeout_seconds: float = 30.0
+
+    # ── Contradiction detection ──────────────────────────────────
+    enable_contradiction_detection: bool = False
+    contradiction_strategy: str = "heuristic"  # heuristic | llm
+    contradiction_similarity_threshold: float = 0.85
+    contradiction_candidate_top_k: int = 5
+
+    # ── Temporal validity (bitemporal facts) ─────────────────────
+    # When True, retrieval defaults to *currently-valid* facts only
+    # (``valid_to IS NULL``) and honours ``as_of`` for point-in-time queries.
+    # When False (default) behaviour is byte-identical to pre-migration:
+    # ``valid_to IS NULL OR valid_to > now()``.
+    enable_temporal_validity: bool = False
+
     # ── Retrieval ────────────────────────────────────────────────
     default_top_k: int = 10
     # Over-fetch multiplier: how many raw candidates to pull per requested
@@ -103,6 +166,10 @@ class Settings(BaseSettings):
 
     # ── MCP Server ───────────────────────────────────────────
     enable_mcp: bool = True
+    # Expose the irreversible `forget_memory` tool over MCP. Off by default:
+    # an agent should not be able to hard-delete data unless deliberately
+    # allowed to, and even then the key needs the `erase` scope.
+    mcp_enable_forget: bool = False
 
     # ── Memory Explorer UI ───────────────────────────────────
     enable_explorer: bool = True

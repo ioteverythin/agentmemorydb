@@ -33,6 +33,7 @@ def memory_event_payload(memory: Memory) -> dict[str, Any]:
         "layer": memory.layer,
         "scope": memory.scope,
         "status": memory.status,
+        "origin": memory.origin,
         "version": memory.version,
     }
 

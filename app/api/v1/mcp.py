@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 
+from app.core.auth import get_current_api_key
 from app.mcp.server import create_mcp_server
+from app.models.api_key import APIKey
 
 router = APIRouter()
 
@@ -14,7 +16,10 @@ _mcp_server = create_mcp_server()
 
 
 @router.post("/message")
-async def mcp_message(request: Request):
+async def mcp_message(
+    request: Request,
+    api_key: APIKey | None = Depends(get_current_api_key),
+):
     """Handle an MCP JSON-RPC 2.0 message.
 
     This endpoint receives MCP protocol messages and routes them to the
@@ -29,7 +34,7 @@ async def mcp_message(request: Request):
         }
     """
     body = await request.json()
-    response = await _mcp_server.handle_message(body)
+    response = await _mcp_server.handle_message(body, api_key=api_key)
     return JSONResponse(content=response)
 
 

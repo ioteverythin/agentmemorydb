@@ -43,6 +43,22 @@ class RetrievalService:
         self._log_repo = RetrievalLogRepository(session)
         self._access_tracker = AccessTrackingService(session)
 
+    def _reconsolidate(self, memories: list[Memory]) -> None:
+        """Strengthen recalled memories (the counterweight to importance decay).
+
+        Retrieval is the evidence that a memory is still useful, so recall bumps
+        importance by ``RECONSOLIDATION_BOOST`` (capped at 1.0) and refreshes the
+        recency score. Without this, decay would eventually flatten every
+        memory regardless of how heavily it is used; with it, *use* is what keeps
+        a memory important. Point-in-time (``as_of``) queries are exempt —
+        auditing history must not rewrite it.
+        """
+        boost = settings.reconsolidation_boost
+        for memory in memories:
+            if memory.importance_score < 1.0:
+                memory.importance_score = min(round(memory.importance_score + boost, 6), 1.0)
+            memory.recency_score = 1.0
+
     async def search(self, req: MemorySearchRequest) -> MemorySearchResponse:
         """Execute hybrid search and return scored, auditable results.
 
@@ -91,6 +107,7 @@ class RetrievalService:
             include_expired=req.include_expired,
             limit=overfetch,
             access_predicate=access_predicate,
+            as_of=req.as_of,
         )
 
         # ── Sparse (full-text / BM25) candidates ────────────────
@@ -109,6 +126,7 @@ class RetrievalService:
                 include_expired=req.include_expired,
                 limit=overfetch,
                 access_predicate=access_predicate,
+                as_of=req.as_of,
             )
 
         # ── Merge candidate pools ───────────────────────────────
@@ -167,14 +185,27 @@ class RetrievalService:
         results: list[MemorySearchResult] = []
         log_items: list[RetrievalLogItem] = []
 
+        # ── Point-in-time projection ────────────────────────────
+        # Ranking finds the *fact slot*; if as_of predates a row's current
+        # generation, substitute the generation that was valid then. A memory
+        # with no generation valid at as_of is dropped from the results.
+        projected_by_id: dict = {}
+        if req.as_of is not None:
+            from app.services.temporal_service import TemporalService
+
+            temporal = TemporalService(self._session)
+            for view in await temporal.project_as_of([m for m, _, _ in scored], req.as_of):
+                projected_by_id[view.id] = view
+
         for rank, (memory, final, breakdown) in enumerate(scored, start=1):
+            if req.as_of is not None:
+                view = projected_by_id.get(memory.id)
+                if view is None:
+                    continue
+            else:
+                view = MemoryResponse.model_validate(memory)
             score_bd = ScoreBreakdown(**breakdown) if req.explain else None
-            results.append(
-                MemorySearchResult(
-                    memory=MemoryResponse.model_validate(memory),
-                    score=score_bd,
-                )
-            )
+            results.append(MemorySearchResult(memory=view, score=score_bd))
             log_items.append(
                 RetrievalLogItem(
                     memory_id=memory.id,
@@ -219,6 +250,12 @@ class RetrievalService:
                 run_id=req.run_id,
                 access_type="retrieval",
             )
+
+        # ── Reconsolidation on retrieval ────────────────────────
+        # Recall strengthens a memory. Applied after the response is built, so
+        # the returned scores reflect the state that produced this ranking.
+        if settings.enable_reconsolidation and req.as_of is None:
+            self._reconsolidate([m for m, _, _ in scored])
 
         return MemorySearchResponse(
             results=results,

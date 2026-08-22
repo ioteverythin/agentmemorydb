@@ -14,7 +14,12 @@ from __future__ import annotations
 import json
 from typing import Any
 
+from fastapi import HTTPException
+
+from app.core.auth import assert_scope
+from app.core.config import settings
 from app.mcp.tools import TOOL_REGISTRY, ToolDefinition
+from app.models.api_key import APIKey
 
 # ─── MCP Protocol Constants ──────────────────────────────────────
 MCP_VERSION = "2024-11-05"
@@ -38,17 +43,31 @@ class MCPServer:
 
     # ── Protocol Handlers ────────────────────────────────────────
 
-    async def handle_message(self, message: dict[str, Any]) -> dict[str, Any]:
-        """Route an incoming JSON-RPC 2.0 message to the correct handler."""
+    async def handle_message(
+        self, message: dict[str, Any], *, api_key: APIKey | None = None
+    ) -> dict[str, Any]:
+        """Route an incoming JSON-RPC 2.0 message to the correct handler.
+
+        ``api_key`` is the authenticated caller, when the transport resolved one.
+        Tools that declare ``requires_scope`` are checked against it; tools that
+        do not are unaffected, so the parameter is optional.
+        """
         method = message.get("method", "")
         msg_id = message.get("id")
         params = message.get("params", {})
+
+        if method == "tools/call":
+            try:
+                return self._success_response(
+                    msg_id, await self._handle_tools_call(params, api_key=api_key)
+                )
+            except Exception as exc:
+                return self._error_response(msg_id, -32603, str(exc))
 
         handler_map = {
             "initialize": self._handle_initialize,
             "initialized": self._handle_initialized,
             "tools/list": self._handle_tools_list,
-            "tools/call": self._handle_tools_call,
             "resources/list": self._handle_resources_list,
             "resources/read": self._handle_resources_read,
             "ping": self._handle_ping,
@@ -87,10 +106,23 @@ class MCPServer:
 
     # ── Tools ────────────────────────────────────────────────────
 
+    @staticmethod
+    def _tool_enabled(tool_def: ToolDefinition) -> bool:
+        """Whether a flag-gated tool is currently switched on."""
+        if tool_def.requires_flag is None:
+            return True
+        return bool(getattr(settings, tool_def.requires_flag, False))
+
     async def _handle_tools_list(self, params: dict[str, Any]) -> dict[str, Any]:
-        """Return the list of available MCP tools."""
+        """Return the list of available MCP tools.
+
+        Flag-gated tools are omitted while switched off — an agent should not see
+        a tool it cannot call.
+        """
         tools = []
         for name, tool_def in self._tools.items():
+            if not self._tool_enabled(tool_def):
+                continue
             tools.append(
                 {
                     "name": name,
@@ -100,8 +132,10 @@ class MCPServer:
             )
         return {"tools": tools}
 
-    async def _handle_tools_call(self, params: dict[str, Any]) -> dict[str, Any]:
-        """Execute an MCP tool call."""
+    async def _handle_tools_call(
+        self, params: dict[str, Any], *, api_key: APIKey | None = None
+    ) -> dict[str, Any]:
+        """Execute an MCP tool call, enforcing its flag and scope gates."""
         tool_name = params.get("name", "")
         arguments = params.get("arguments", {})
 
@@ -116,6 +150,18 @@ class MCPServer:
                 ],
                 "isError": True,
             }
+
+        if not self._tool_enabled(tool_def):
+            flag = (tool_def.requires_flag or "").upper()
+            return self._tool_error(
+                f"Tool '{tool_name}' is disabled. Set {flag}=true to enable it."
+            )
+
+        if tool_def.requires_scope is not None:
+            try:
+                assert_scope(api_key, tool_def.requires_scope, allow_unscoped=False)
+            except HTTPException as exc:
+                return self._tool_error(str(exc.detail))
 
         try:
             result = await tool_def.handler(arguments)
@@ -235,6 +281,14 @@ class MCPServer:
         return {}
 
     # ── Helpers ──────────────────────────────────────────────────
+
+    @staticmethod
+    def _tool_error(message: str) -> dict[str, Any]:
+        """A tool-call result carrying an error the agent can read."""
+        return {
+            "content": [{"type": "text", "text": json.dumps({"error": message})}],
+            "isError": True,
+        }
 
     def _success_response(self, msg_id: Any, result: dict[str, Any]) -> dict[str, Any]:
         return {"jsonrpc": "2.0", "id": msg_id, "result": result}

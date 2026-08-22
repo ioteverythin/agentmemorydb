@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.memory import Memory
 from app.models.memory_link import MemoryLink
 from app.repositories.memory_repository import MemoryRepository
+from app.utils.similarity import cosine_similarity
 
 
 class ConsolidationService:
@@ -179,14 +180,4 @@ class ConsolidationService:
             "memories_merged": merged_count,
         }
 
-    @staticmethod
-    def _cosine_similarity(a: list[float], b: list[float]) -> float:
-        """Compute cosine similarity between two vectors."""
-        import math
-
-        dot = sum(x * y for x, y in zip(a, b, strict=False))
-        norm_a = math.sqrt(sum(x * x for x in a))
-        norm_b = math.sqrt(sum(x * x for x in b))
-        if norm_a == 0 or norm_b == 0:
-            return 0.0
-        return dot / (norm_a * norm_b)
+    _cosine_similarity = staticmethod(cosine_similarity)

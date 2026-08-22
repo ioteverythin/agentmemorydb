@@ -53,6 +53,59 @@ if PROMETHEUS_AVAILABLE:
         registry=REGISTRY,
     )
 
+    MEMORY_SUPERSESSIONS = Counter(
+        "engramdb_memory_supersessions_total",
+        "Total fact supersessions (a validity window closed and a new generation began)",
+        registry=REGISTRY,
+    )
+
+    MEMORY_INVALIDATIONS = Counter(
+        "engramdb_memory_invalidations_total",
+        "Total fact invalidations (validity window closed with no replacement)",
+        registry=REGISTRY,
+    )
+
+    MEMORY_CONTRADICTIONS = Counter(
+        "engramdb_memory_contradictions_total",
+        "Contradictions detected during observation promotion",
+        ["verdict"],  # same_fact_updated | contradicts
+        registry=REGISTRY,
+    )
+
+    MEMORY_FORGETTING = Counter(
+        "engramdb_memory_forgetting_total",
+        "Memories removed from active recall, by forgetting action",
+        # decayed | decayed_archive | expired | user_erasure | admin_erasure | quarantined
+        ["action"],
+        registry=REGISTRY,
+    )
+
+    REFLECTIONS = Counter(
+        "engramdb_reflections_total",
+        "Sleep-time reflection passes by outcome",
+        ["status"],  # completed | skipped | failed
+        registry=REGISTRY,
+    )
+
+    REFLECTION_INSIGHTS = Counter(
+        "engramdb_reflection_insights_total",
+        "Insights written by sleep-time reflection",
+        registry=REGISTRY,
+    )
+
+    AUTOLINKS = Counter(
+        "engramdb_autolinks_total",
+        "related_to edges created automatically on write",
+        registry=REGISTRY,
+    )
+
+    AUTHORITY_CLAMPS = Counter(
+        "engramdb_authority_clamps_total",
+        "Writes whose requested authority exceeded their origin's ceiling",
+        ["origin"],
+        registry=REGISTRY,
+    )
+
     MEMORY_SEARCHES = Counter(
         "engramdb_memory_searches_total",
         "Total memory search operations",
@@ -128,6 +181,58 @@ def record_upsert(action: str) -> None:
     """Record a memory upsert metric."""
     if PROMETHEUS_AVAILABLE:
         MEMORY_UPSERTS.labels(action=action).inc()
+
+
+def record_supersession() -> None:
+    """Record a fact supersession (validity window closed, new generation began)."""
+    if PROMETHEUS_AVAILABLE:
+        MEMORY_SUPERSESSIONS.inc()
+
+
+def record_invalidation() -> None:
+    """Record a fact invalidation (window closed with no replacement)."""
+    if PROMETHEUS_AVAILABLE:
+        MEMORY_INVALIDATIONS.inc()
+
+
+def record_contradiction(verdict: str) -> None:
+    """Record a detected contradiction by verdict."""
+    if PROMETHEUS_AVAILABLE:
+        MEMORY_CONTRADICTIONS.labels(verdict=verdict).inc()
+
+
+def record_forgetting(action: str, count: int = 1) -> None:
+    """Record forgetting activity (decay, expiry, erasure, quarantine)."""
+    if PROMETHEUS_AVAILABLE and count:
+        MEMORY_FORGETTING.labels(action=action).inc(count)
+
+
+def record_reflection(status: str, insights: int = 0) -> None:
+    """Record a reflection pass and any insights it wrote.
+
+    The ``status`` label is what makes a misconfigured deployment visible: a
+    steady stream of ``skipped`` is a reflection system that is not reflecting.
+    """
+    if PROMETHEUS_AVAILABLE:
+        REFLECTIONS.labels(status=status).inc()
+        if insights:
+            REFLECTION_INSIGHTS.inc(insights)
+
+
+def record_autolink(count: int = 1) -> None:
+    """Record automatically-created ``related_to`` edges."""
+    if PROMETHEUS_AVAILABLE and count:
+        AUTOLINKS.inc(count)
+
+
+def record_authority_clamp(origin: str) -> None:
+    """Record a write whose authority was clamped to its origin's ceiling.
+
+    A rising rate here is the signal worth alerting on: something is repeatedly
+    trying to write above its trust level.
+    """
+    if PROMETHEUS_AVAILABLE:
+        AUTHORITY_CLAMPS.labels(origin=origin).inc()
 
 
 def record_search(strategy: str) -> None:

@@ -21,6 +21,10 @@ import type {
   ConsolidateResponse,
   ExportResponse,
   HealthResponse,
+  ForgettingLogEntry,
+  ErasureResponse,
+  OriginPolicy,
+  ConsolidationRun,
 } from './types';
 
 // ── HTTP Helper ─────────────────────────────────────────────────
@@ -97,7 +101,7 @@ class MemoriesClient {
 
   /** Create or update a memory (versioned, deduplicated). */
   async upsert(input: MemoryUpsertInput): Promise<Memory> {
-    return this.http.post('/memories', {
+    return this.http.post('/memories/upsert', {
       user_id: input.userId,
       memory_key: input.memoryKey,
       content: input.content,
@@ -114,6 +118,9 @@ class MemoriesClient {
       valid_to: input.validTo,
       expires_at: input.expiresAt,
       is_contradiction: input.isContradiction ?? false,
+      pinned: input.pinned,
+      origin: input.origin,
+      origin_ref: input.originRef,
     });
   }
 
@@ -132,6 +139,7 @@ class MemoriesClient {
       min_importance: input.minImportance,
       include_expired: input.includeExpired ?? false,
       explain: input.explain ?? false,
+      as_of: input.asOf,
     });
   }
 
@@ -148,6 +156,80 @@ class MemoriesClient {
   /** Get version history for a memory. */
   async versions(memoryId: string): Promise<unknown[]> {
     return this.http.get(`/memories/${memoryId}/versions`);
+  }
+
+  /** The full supersession chain for a memory, oldest generation first. */
+  async timeline(memoryId: string): Promise<unknown> {
+    return this.http.get(`/memories/${memoryId}/timeline`);
+  }
+
+  /** Close a fact's validity window with no replacement (it stopped being true). */
+  async invalidate(memoryId: string, validTo?: string): Promise<Memory> {
+    return this.http.post(`/memories/${memoryId}/invalidate`, { valid_to: validTo });
+  }
+
+  /** Pin (or unpin) a memory so it is never decayed or auto-archived. */
+  async pin(memoryId: string, pinned = true): Promise<Memory> {
+    return this.http.patch(`/memories/${memoryId}/pin`, { pinned });
+  }
+
+  /**
+   * Hard-erase a memory. Irreversible, and requires an API key with the
+   * `erase` scope. A forgetting-log tombstone keeps the content's SHA-256.
+   */
+  async erase(memoryId: string, reason?: string): Promise<ErasureResponse> {
+    const query = reason ? `&reason=${encodeURIComponent(reason)}` : '';
+    return this.http.delete(`/memories/${memoryId}?mode=erase${query}`);
+  }
+
+  /**
+   * Link this memory to its nearest topical neighbours now. Runs whether or
+   * not ENABLE_AUTOLINK is on, and is safe to call twice.
+   */
+  async autolink(memoryId: string): Promise<MemoryLink[]> {
+    return this.http.post(`/memories/${memoryId}/autolink`);
+  }
+}
+
+class ProvenanceClient {
+  constructor(private http: HttpClient) {}
+
+  /** The active trust policy: authority ceilings and quarantine rules. */
+  async policy(): Promise<OriginPolicy> {
+    return this.http.get('/provenance/policy');
+  }
+
+  /** The review queue — writes held back because their origin was untrusted. */
+  async quarantine(params?: { userId?: string; limit?: number }): Promise<Memory[]> {
+    const query = new URLSearchParams();
+    if (params?.userId) query.set('user_id', params.userId);
+    if (params?.limit) query.set('limit', String(params.limit));
+    const qs = query.toString();
+    return this.http.get(`/provenance/quarantine${qs ? `?${qs}` : ''}`);
+  }
+
+  /** Approve a quarantined memory into active recall, or reject it. */
+  async review(memoryId: string, approve: boolean, reviewer?: string): Promise<Memory> {
+    return this.http.post(`/provenance/quarantine/${memoryId}/review`, { approve, reviewer });
+  }
+}
+
+class ForgettingClient {
+  constructor(private http: HttpClient) {}
+
+  /** The forgetting audit trail — decay, expiry, and erasure decisions. */
+  async log(params?: { userId?: string; limit?: number }): Promise<ForgettingLogEntry[]> {
+    const query = new URLSearchParams();
+    if (params?.userId) query.set('user_id', params.userId);
+    if (params?.limit) query.set('limit', String(params.limit));
+    const qs = query.toString();
+    return this.http.get(`/forgetting/log${qs ? `?${qs}` : ''}`);
+  }
+
+  /** Erase every memory for a user (GDPR right-to-be-forgotten). */
+  async eraseUser(userId: string, reason?: string): Promise<ErasureResponse> {
+    const query = reason ? `&reason=${encodeURIComponent(reason)}` : '';
+    return this.http.delete(`/users/${userId}/memories?mode=erase${query}`);
   }
 }
 
@@ -213,6 +295,17 @@ class GraphClient {
   }
 
   /** Find shortest path between two memories. */
+  /** Autolink a user's existing memories (dry run by default). */
+  async autolinkBackfill(
+    userId: string,
+    opts?: { limit?: number; dryRun?: boolean },
+  ): Promise<{ memories_scanned: number; links_created: number; dry_run: boolean }> {
+    const query = new URLSearchParams({ user_id: userId });
+    if (opts?.limit) query.set('limit', String(opts.limit));
+    query.set('dry_run', String(opts?.dryRun ?? true));
+    return this.http.post(`/graph/autolink-backfill?${query.toString()}`);
+  }
+
   async shortestPath(sourceId: string, targetId: string): Promise<unknown> {
     return this.http.post('/graph/shortest-path', {
       source_id: sourceId,
@@ -231,6 +324,26 @@ class ConsolidationClient {
       similarity_threshold: input.similarityThreshold ?? 0.92,
       dry_run: input.dryRun ?? true,
     });
+  }
+
+  /**
+   * Run a sleep-time reflection pass, deriving insights from clusters of
+   * related memories. Returns the run record even when it produced nothing.
+   */
+  async reflect(userId: string, opts?: { projectId?: string; dryRun?: boolean }): Promise<ConsolidationRun> {
+    const query = new URLSearchParams({ user_id: userId });
+    if (opts?.projectId) query.set('project_id', opts.projectId);
+    if (opts?.dryRun) query.set('dry_run', 'true');
+    return this.http.post(`/consolidation/reflect?${query.toString()}`);
+  }
+
+  /** Reflection pass history, newest first. */
+  async runs(params?: { userId?: string; limit?: number }): Promise<ConsolidationRun[]> {
+    const query = new URLSearchParams();
+    if (params?.userId) query.set('user_id', params.userId);
+    if (params?.limit) query.set('limit', String(params.limit));
+    const qs = query.toString();
+    return this.http.get(`/consolidation/runs${qs ? `?${qs}` : ''}`);
   }
 }
 
@@ -265,6 +378,10 @@ export class EngramDB {
   public consolidation: ConsolidationClient;
   /** Import/export operations. */
   public data: DataClient;
+  /** Forgetting audit trail and erasure. */
+  public forgetting: ForgettingClient;
+  /** Write-provenance policy and the quarantine review queue. */
+  public provenance: ProvenanceClient;
 
   constructor(config: EngramDBConfig) {
     this.http = new HttpClient(config);
@@ -274,6 +391,8 @@ export class EngramDB {
     this.graph = new GraphClient(this.http);
     this.consolidation = new ConsolidationClient(this.http);
     this.data = new DataClient(this.http);
+    this.forgetting = new ForgettingClient(this.http);
+    this.provenance = new ProvenanceClient(this.http);
   }
 
   /** Health check. */

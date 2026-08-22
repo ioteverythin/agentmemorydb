@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, String, Text, func
+from sqlalchemy import DateTime, ForeignKey, Index, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -32,4 +32,12 @@ class MemoryLink(Base):
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    __table_args__ = (
+        # Autolink dedup asks "is there already an edge of this type touching
+        # this memory?" and must match either endpoint, so both directions get
+        # their own composite index.
+        Index("ix_memory_links_type_source", "link_type", "source_memory_id"),
+        Index("ix_memory_links_type_target", "link_type", "target_memory_id"),
     )

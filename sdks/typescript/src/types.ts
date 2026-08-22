@@ -32,10 +32,16 @@ export interface Memory {
   content_hash: string;
   payload: Record<string, unknown> | null;
   source_type: SourceType;
+  /** Trust domain the write came from — caps authority, gates quarantine. */
+  origin: MemoryOrigin;
+  /** Pointer to the specific writer: a URL, tool name, or document id. */
+  origin_ref: string | null;
   source_event_id: string | null;
   source_observation_id: string | null;
   source_run_id: string | null;
   status: MemoryStatus;
+  /** Pinned memories are exempt from importance decay and retention archival. */
+  pinned: boolean;
   authority_level: number;
   confidence: number;
   importance_score: number;
@@ -66,6 +72,12 @@ export interface MemoryUpsertInput {
   validTo?: string;
   expiresAt?: string;
   isContradiction?: boolean;
+  /** Pin this memory so it is never decayed or auto-archived. */
+  pinned?: boolean;
+  /** Trust domain of the writer. Attribute honestly: it caps the authority
+   *  this write may claim and decides whether it is quarantined. */
+  origin?: MemoryOrigin;
+  originRef?: string;
 }
 
 export interface MemorySearchInput {
@@ -81,6 +93,8 @@ export interface MemorySearchInput {
   minImportance?: number;
   includeExpired?: boolean;
   explain?: boolean;
+  /** Point-in-time query: the facts valid at this ISO-8601 instant. */
+  asOf?: string;
 }
 
 // ── Score Breakdown ─────────────────────────────────────────────
@@ -182,4 +196,73 @@ export interface ExportResponse {
   version: string;
   exported_at: string;
   data: unknown;
+}
+
+// ── Forgetting ──────────────────────────────────────────────────
+
+/** One recorded forgetting decision (decay, expiry, or erasure). */
+export interface ForgettingLogEntry {
+  id: string;
+  memory_id: string;
+  user_id: string;
+  /** decayed | decayed_archive | expired | user_erasure | admin_erasure */
+  action: string;
+  reason: string | null;
+  triggered_by: string | null;
+  /** SHA-256 of erased content — proves what was deleted without keeping it. */
+  content_hash: string | null;
+  occurred_at: string;
+}
+
+/** Receipt for a hard erasure (GDPR right-to-be-forgotten). */
+export interface ErasureResponse {
+  erased: number;
+  action: string;
+  memory_id: string | null;
+  user_id: string | null;
+}
+
+// ── Provenance ──────────────────────────────────────────────────
+
+/** Who wrote a fact — the trust domain it entered from. */
+export type MemoryOrigin =
+  | 'operator'
+  | 'user'
+  | 'system'
+  | 'agent_inference'
+  | 'tool_output'
+  | 'imported'
+  | 'external_ingest';
+
+/** The active write-trust policy. */
+export interface OriginPolicy {
+  enabled: boolean;
+  quarantine_confidence_threshold: number;
+  /** origin → highest authority_level that origin may claim */
+  authority_ceilings: Record<string, number>;
+  untrusted_origins: string[];
+}
+
+// ── Sleep-time consolidation (reflection) ───────────────────────
+
+/**
+ * One reflection pass. A `skipped` status with a `skipped_reason` is the
+ * normal, informative outcome when reflection has nothing to work with —
+ * `no_llm_provider` in particular means the feature is on but has no model.
+ */
+export interface ConsolidationRun {
+  id: string;
+  user_id: string;
+  project_id: string | null;
+  kind: string;
+  status: 'completed' | 'skipped' | 'failed';
+  skipped_reason: string | null;
+  memories_considered: number;
+  clusters_found: number;
+  insights_created: number;
+  details: Record<string, unknown> | null;
+  error: string | null;
+  duration_ms: number;
+  started_at: string;
+  finished_at: string | null;
 }

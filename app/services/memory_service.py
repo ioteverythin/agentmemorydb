@@ -9,8 +9,15 @@ from datetime import UTC, datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.errors import NotFoundError
-from app.core.metrics import record_upsert
+from app.core.config import settings
+from app.core.errors import ConflictError, NotFoundError
+from app.core.metrics import (
+    record_authority_clamp,
+    record_forgetting,
+    record_invalidation,
+    record_supersession,
+    record_upsert,
+)
 from app.models.memory import Memory
 from app.models.memory_link import MemoryLink
 from app.models.memory_version import MemoryVersion
@@ -20,6 +27,7 @@ from app.services.lifecycle import emit_lifecycle_event, memory_event_payload
 from app.utils.embedding_provider import get_embedding_provider
 from app.utils.hashing import compute_content_hash
 from app.utils.masking import get_default_engine
+from app.utils.provenance import clamp_authority, should_quarantine
 from app.ws import MemoryEventTypes
 
 logger = logging.getLogger(__name__)
@@ -82,6 +90,14 @@ class MemoryService:
 
         content_hash = compute_content_hash(data.content)
 
+        # ── Write provenance: clamp authority to the origin's ceiling ──
+        # A low-trust writer must not be able to claim high authority and thereby
+        # outrank what the user actually said. Clamped, not rejected: the fact is
+        # still worth storing, it just cannot outrank a more trusted writer.
+        authority, clamped = clamp_authority(data.origin, data.authority_level)
+        if clamped:
+            record_authority_clamp(data.origin)
+
         # ── Auto-generate embedding if not provided ──────────
         if data.embedding is None and data.content:
             try:
@@ -92,29 +108,56 @@ class MemoryService:
             except Exception:
                 logger.warning("Failed to auto-generate embedding for memory", exc_info=True)
 
-        existing = await self._repo.find_active_by_key(
-            user_id=data.user_id,
-            memory_key=data.memory_key,
-            scope=data.scope,
-            project_id=data.project_id,
+        # ── Quarantine decision, made *before* the incumbent lookup ──
+        # A quarantined write never supersedes anything. Were it allowed to take
+        # the update path it could overwrite — or worse, suppress — a fact the
+        # user stated, which is the poisoning attack this feature exists to stop.
+        # Quarantined rows are always fresh records, and since ``find_active_by_key``
+        # matches only active rows they can share a key without colliding.
+        quarantine = should_quarantine(data.origin, data.confidence)
+
+        existing = (
+            None
+            if quarantine
+            else await self._repo.find_active_by_key(
+                user_id=data.user_id,
+                memory_key=data.memory_key,
+                scope=data.scope,
+                project_id=data.project_id,
+            )
         )
 
         if existing is not None:
+            # ── Invalidate-only: close the window, no replacement ──
+            if data.invalidate_only:
+                await self._invalidate(existing, valid_to=data.valid_from or datetime.now(UTC))
+                record_upsert("invalidate")
+                return existing, False
+
             # Skip update if content is identical
             if existing.content_hash == content_hash:
-                # Touch updated_at only
+                # Touch updated_at only — but an explicit pin still applies, so
+                # re-upserting unchanged content can pin it.
                 existing.updated_at = datetime.now(UTC)
                 existing.recency_score = 1.0
+                if data.pinned is not None:
+                    existing.pinned = data.pinned
                 record_upsert("skip_identical")
                 return existing, False
+
+            # ── Supersession ──────────────────────────────────────
+            # The new generation becomes valid at ``valid_from`` (agents may
+            # backdate). The prior generation's world-validity window closes at
+            # exactly that instant, so historical windows tile without gaps.
+            new_valid_from = data.valid_from or datetime.now(UTC)
+            superseded_version = existing.version
 
             # Snapshot previous version. In-place versioning means the prior
             # content is preserved as a MemoryVersion row (with its full
             # governance envelope), which is the authoritative record of a
             # contradiction/supersession — no self-referential link needed.
-            snapshot = await self._repo.snapshot_version(existing)
-            if data.is_contradiction:
-                snapshot.status = "superseded"
+            snapshot = await self._repo.snapshot_version(existing, valid_to=new_valid_from)
+            snapshot.status = "superseded"
 
             # Update canonical row
             existing.content = data.content
@@ -127,23 +170,44 @@ class MemoryService:
             existing.source_event_id = data.source_event_id
             existing.source_observation_id = data.source_observation_id
             existing.source_run_id = data.source_run_id
-            existing.authority_level = data.authority_level
+            existing.origin = data.origin
+            existing.origin_ref = data.origin_ref
+            existing.authority_level = authority
             existing.confidence = data.confidence
             existing.importance_score = data.importance_score
             existing.recency_score = 1.0
-            existing.valid_from = data.valid_from or existing.valid_from
+            # ``None`` means "leave the pin as it is" — pinning is a deliberate
+            # operator decision that a routine content update must not clear.
+            if data.pinned is not None:
+                existing.pinned = data.pinned
+            existing.valid_from = new_valid_from
             existing.valid_to = data.valid_to
             existing.expires_at = data.expires_at
             existing.version += 1
             existing.updated_at = datetime.now(UTC)
 
             record_upsert("update")
+            record_supersession()
+            await self._autolink(existing)
             if emit:
+                payload = memory_event_payload(existing)
                 await emit_lifecycle_event(
                     self._session,
                     event_type=MemoryEventTypes.MEMORY_UPDATED,
                     user_id=existing.user_id,
-                    data=memory_event_payload(existing),
+                    data=payload,
+                    project_id=existing.project_id,
+                    memory_id=existing.id,
+                )
+                await emit_lifecycle_event(
+                    self._session,
+                    event_type=MemoryEventTypes.MEMORY_SUPERSEDED,
+                    user_id=existing.user_id,
+                    data={
+                        **payload,
+                        "superseded_version": superseded_version,
+                        "valid_from": new_valid_from.isoformat(),
+                    },
                     project_id=existing.project_id,
                     memory_id=existing.id,
                 )
@@ -162,31 +226,96 @@ class MemoryService:
                 embedding=data.embedding,
                 payload=data.payload,
                 source_type=data.source_type,
+                origin=data.origin,
+                origin_ref=data.origin_ref,
                 source_event_id=data.source_event_id,
                 source_observation_id=data.source_observation_id,
                 source_run_id=data.source_run_id,
-                status="active",
-                authority_level=data.authority_level,
+                status="quarantined" if quarantine else "active",
+                authority_level=authority,
                 confidence=data.confidence,
                 importance_score=data.importance_score,
                 recency_score=1.0,
+                pinned=bool(data.pinned),
                 valid_from=data.valid_from or datetime.now(UTC),
                 valid_to=data.valid_to,
                 expires_at=data.expires_at,
                 version=1,
             )
             memory = await self._repo.create(memory)
-            record_upsert("create")
+            if quarantine:
+                record_upsert("quarantine")
+                record_forgetting("quarantined")
+                logger.warning(
+                    "Quarantined memory %s from origin %s (confidence %.2f below %.2f)",
+                    memory.id,
+                    memory.origin,
+                    memory.confidence,
+                    settings.quarantine_confidence_threshold,
+                )
+            else:
+                record_upsert("create")
+            if not quarantine:
+                await self._autolink(memory)
             if emit:
                 await emit_lifecycle_event(
                     self._session,
-                    event_type=MemoryEventTypes.MEMORY_CREATED,
+                    event_type=(
+                        MemoryEventTypes.MEMORY_QUARANTINED
+                        if quarantine
+                        else MemoryEventTypes.MEMORY_CREATED
+                    ),
                     user_id=memory.user_id,
                     data=memory_event_payload(memory),
                     project_id=memory.project_id,
                     memory_id=memory.id,
                 )
             return memory, True
+
+    async def _autolink(self, memory: Memory) -> None:
+        """Connect a freshly-written memory to its topical neighbours.
+
+        Enrichment, not part of the write's contract: :meth:`AutolinkService.autolink`
+        swallows its own failures so a graph problem can never fail an upsert.
+        """
+        if not settings.enable_autolink:
+            return
+        from app.services.autolink_service import AutolinkService
+
+        await AutolinkService(self._session).autolink(memory)
+
+    # ── Invalidation (close a validity window, no replacement) ──
+    async def _invalidate(self, memory: Memory, *, valid_to: datetime, emit: bool = True) -> Memory:
+        """Close ``memory``'s world-validity window without a replacement.
+
+        The fact stopped being true. The final generation is snapshotted with
+        the closed window and the canonical row is marked ``stale`` so it drops
+        out of current-fact retrieval while remaining queryable as-of.
+        """
+        await self._repo.snapshot_version(memory, valid_to=valid_to)
+        memory.valid_to = valid_to
+        memory.status = "stale"
+        memory.updated_at = datetime.now(UTC)
+        record_invalidation()
+        if emit:
+            await emit_lifecycle_event(
+                self._session,
+                event_type=MemoryEventTypes.MEMORY_SUPERSEDED,
+                user_id=memory.user_id,
+                data={
+                    **memory_event_payload(memory),
+                    "invalidated": True,
+                    "valid_to": valid_to.isoformat(),
+                },
+                project_id=memory.project_id,
+                memory_id=memory.id,
+            )
+        return memory
+
+    async def invalidate(self, memory_id: uuid.UUID, *, valid_to: datetime | None = None) -> Memory:
+        """Public invalidation by id — the fact is no longer true."""
+        memory = await self.get_memory(memory_id)
+        return await self._invalidate(memory, valid_to=valid_to or datetime.now(UTC))
 
     # ── Read operations ─────────────────────────────────────────
     async def get_memory(self, memory_id: uuid.UUID) -> Memory:
@@ -205,8 +334,9 @@ class MemoryService:
         status: str | None = None,
         limit: int = 100,
         offset: int = 0,
+        as_of: datetime | None = None,
     ) -> Sequence[Memory]:
-        """List memories with optional filters."""
+        """List memories with optional filters (``as_of`` = point-in-time)."""
         return await self._repo.list_filtered(
             user_id=user_id,
             project_id=project_id,
@@ -215,6 +345,7 @@ class MemoryService:
             status=status,
             limit=limit,
             offset=offset,
+            as_of=as_of,
         )
 
     # ── Status management ───────────────────────────────────────
@@ -235,6 +366,64 @@ class MemoryService:
                 project_id=memory.project_id,
                 memory_id=memory.id,
             )
+        return memory
+
+    # ── Quarantine review ───────────────────────────────────────
+    async def list_quarantined(
+        self,
+        *,
+        user_id: uuid.UUID | None = None,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> Sequence[Memory]:
+        """The review queue: writes held back for a human to look at."""
+        return await self._repo.list_filtered(
+            user_id=user_id, status="quarantined", limit=limit, offset=offset
+        )
+
+    async def release_quarantine(
+        self, memory_id: uuid.UUID, *, approve: bool, reviewer: str | None = None
+    ) -> Memory:
+        """Approve a quarantined memory into active recall, or reject it.
+
+        Approval is the only way a quarantined write becomes retrievable — the
+        decision is deliberately human, since the whole point of quarantine is
+        that the system could not vouch for the writer.
+        """
+        memory = await self.get_memory(memory_id)
+        if memory.status != "quarantined":
+            raise ConflictError(f"Memory {memory_id} is not quarantined (status={memory.status})")
+
+        memory.status = "active" if approve else "retracted"
+        memory.updated_at = datetime.now(UTC)
+        memory.payload = {
+            **(memory.payload or {}),
+            "quarantine_review": {
+                "approved": approve,
+                "reviewer": reviewer,
+                "reviewed_at": memory.updated_at.isoformat(),
+            },
+        }
+        await emit_lifecycle_event(
+            self._session,
+            event_type=MemoryEventTypes.MEMORY_RELEASED,
+            user_id=memory.user_id,
+            data={**memory_event_payload(memory), "approved": approve, "reviewer": reviewer},
+            project_id=memory.project_id,
+            memory_id=memory.id,
+        )
+        return memory
+
+    async def set_pinned(self, memory_id: uuid.UUID, *, pinned: bool) -> Memory:
+        """Pin or unpin a memory.
+
+        A pinned memory is exempt from importance decay and retention archival —
+        the escape hatch for facts that must never be forgotten regardless of
+        how rarely they are recalled.
+        """
+        memory = await self.get_memory(memory_id)
+        memory.pinned = pinned
+        memory.updated_at = datetime.now(UTC)
         return memory
 
     # ── Versions & links ────────────────────────────────────────

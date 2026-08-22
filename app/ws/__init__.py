@@ -122,8 +122,11 @@ class MemoryEventTypes:
 
     MEMORY_CREATED = "memory.created"
     MEMORY_UPDATED = "memory.updated"
+    MEMORY_SUPERSEDED = "memory.superseded"
     MEMORY_ARCHIVED = "memory.archived"
     MEMORY_RETRACTED = "memory.retracted"
+    MEMORY_QUARANTINED = "memory.quarantined"
+    MEMORY_RELEASED = "memory.released"
     MEMORY_LINKED = "memory.linked"
     MEMORY_CONSOLIDATED = "memory.consolidated"
     EVENT_RECORDED = "event.recorded"
