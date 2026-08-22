@@ -46,6 +46,16 @@ class Settings(BaseSettings):
     enable_reconsolidation: bool = False
     reconsolidation_boost: float = 0.02
 
+    # ── Automatic memory linking ─────────────────────────────────
+    # On write, link a memory to its nearest topical neighbours so graph
+    # traversal reaches more than what somebody explicitly linked. A high bar
+    # and a low cap: linking everything to everything is the same as linking
+    # nothing.
+    enable_autolink: bool = False
+    autolink_similarity_threshold: float = 0.85
+    autolink_max_links: int = 3  # per write
+    autolink_candidate_pool: int = 100  # recent memories scanned per write
+
     # ── Sleep-time consolidation (reflection) ────────────────────
     # A slow, off-request-path pass that derives higher-order insights from
     # clusters of related memories. Requires an LLM provider; without one every

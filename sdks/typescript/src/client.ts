@@ -181,6 +181,14 @@ class MemoriesClient {
     const query = reason ? `&reason=${encodeURIComponent(reason)}` : '';
     return this.http.delete(`/memories/${memoryId}?mode=erase${query}`);
   }
+
+  /**
+   * Link this memory to its nearest topical neighbours now. Runs whether or
+   * not ENABLE_AUTOLINK is on, and is safe to call twice.
+   */
+  async autolink(memoryId: string): Promise<MemoryLink[]> {
+    return this.http.post(`/memories/${memoryId}/autolink`);
+  }
 }
 
 class ProvenanceClient {
@@ -287,6 +295,17 @@ class GraphClient {
   }
 
   /** Find shortest path between two memories. */
+  /** Autolink a user's existing memories (dry run by default). */
+  async autolinkBackfill(
+    userId: string,
+    opts?: { limit?: number; dryRun?: boolean },
+  ): Promise<{ memories_scanned: number; links_created: number; dry_run: boolean }> {
+    const query = new URLSearchParams({ user_id: userId });
+    if (opts?.limit) query.set('limit', String(opts.limit));
+    query.set('dry_run', String(opts?.dryRun ?? true));
+    return this.http.post(`/graph/autolink-backfill?${query.toString()}`);
+  }
+
   async shortestPath(sourceId: string, targetId: string): Promise<unknown> {
     return this.http.post('/graph/shortest-path', {
       source_id: sourceId,

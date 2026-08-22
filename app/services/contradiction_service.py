@@ -22,7 +22,6 @@ from __future__ import annotations
 import enum
 import json
 import logging
-import math
 import uuid
 from dataclasses import dataclass
 from typing import Protocol, runtime_checkable
@@ -32,6 +31,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.models.memory import Memory
 from app.schemas.memory import MemorySearchRequest
+from app.utils.similarity import cosine_similarity
 
 logger = logging.getLogger(__name__)
 
@@ -51,18 +51,6 @@ class ContradictionDecision:
     target: Memory | None = None
     similarity: float = 0.0
     reason: str | None = None
-
-
-def cosine_similarity(a: list[float] | None, b: list[float] | None) -> float:
-    """Cosine similarity, computed in Python so it works on any backend."""
-    if not a or not b:
-        return 0.0
-    dot = sum(x * y for x, y in zip(a, b, strict=False))
-    na = math.sqrt(sum(x * x for x in a))
-    nb = math.sqrt(sum(x * x for x in b))
-    if na == 0.0 or nb == 0.0:
-        return 0.0
-    return dot / (na * nb)
 
 
 # ── Classification strategies ───────────────────────────────────────

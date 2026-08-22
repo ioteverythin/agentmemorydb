@@ -93,6 +93,12 @@ if PROMETHEUS_AVAILABLE:
         registry=REGISTRY,
     )
 
+    AUTOLINKS = Counter(
+        "engramdb_autolinks_total",
+        "related_to edges created automatically on write",
+        registry=REGISTRY,
+    )
+
     AUTHORITY_CLAMPS = Counter(
         "engramdb_authority_clamps_total",
         "Writes whose requested authority exceeded their origin's ceiling",
@@ -211,6 +217,12 @@ def record_reflection(status: str, insights: int = 0) -> None:
         REFLECTIONS.labels(status=status).inc()
         if insights:
             REFLECTION_INSIGHTS.inc(insights)
+
+
+def record_autolink(count: int = 1) -> None:
+    """Record automatically-created ``related_to`` edges."""
+    if PROMETHEUS_AVAILABLE and count:
+        AUTOLINKS.inc(count)
 
 
 def record_authority_clamp(origin: str) -> None:

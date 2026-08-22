@@ -51,6 +51,7 @@ from app.models.memory import Memory
 from app.schemas.memory import MemoryUpsert
 from app.services.memory_service import MemoryService
 from app.utils.llm_provider import BaseLLMProvider, get_llm_provider
+from app.utils.similarity import cosine_similarity
 
 logger = logging.getLogger(__name__)
 
@@ -68,16 +69,7 @@ _SYSTEM_PROMPT = (
 )
 
 
-def _cosine(a: Sequence[float], b: Sequence[float]) -> float:
-    """Cosine similarity, in Python — the vectors here are already in memory."""
-    if not a or not b or len(a) != len(b):
-        return 0.0
-    dot = sum(x * y for x, y in zip(a, b, strict=True))
-    na = sum(x * x for x in a) ** 0.5
-    nb = sum(y * y for y in b) ** 0.5
-    if na == 0.0 or nb == 0.0:
-        return 0.0
-    return float(dot / (na * nb))
+_cosine = cosine_similarity
 
 
 def _lexical(a: str, b: str) -> float:

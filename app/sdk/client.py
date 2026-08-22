@@ -340,6 +340,29 @@ class EngramDBClient:
         self._raise_for_status(resp)
         return resp.json()
 
+    # ── Automatic memory linking ────────────────────────────────
+
+    async def autolink_memory(self, memory_id: str) -> list[dict]:
+        """Link a memory to its nearest topical neighbours now.
+
+        Runs on request whether or not ``ENABLE_AUTOLINK`` is on, and is safe to
+        call twice — edges are deduplicated in both directions.
+        """
+        resp = await self._client.post(f"/api/v1/memories/{memory_id}/autolink")
+        self._raise_for_status(resp)
+        return resp.json()
+
+    async def autolink_backfill(
+        self, user_id: str, *, limit: int = 500, dry_run: bool = True
+    ) -> dict:
+        """Autolink a user's existing memories (dry run by default)."""
+        resp = await self._client.post(
+            "/api/v1/graph/autolink-backfill",
+            params={"user_id": user_id, "limit": limit, "dry_run": dry_run},
+        )
+        self._raise_for_status(resp)
+        return resp.json()
+
     # ── Reflection (sleep-time consolidation) ───────────────────
 
     async def reflect(

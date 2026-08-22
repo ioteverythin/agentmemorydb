@@ -188,6 +188,7 @@ class MemoryService:
 
             record_upsert("update")
             record_supersession()
+            await self._autolink(existing)
             if emit:
                 payload = memory_event_payload(existing)
                 await emit_lifecycle_event(
@@ -254,6 +255,8 @@ class MemoryService:
                 )
             else:
                 record_upsert("create")
+            if not quarantine:
+                await self._autolink(memory)
             if emit:
                 await emit_lifecycle_event(
                     self._session,
@@ -268,6 +271,18 @@ class MemoryService:
                     memory_id=memory.id,
                 )
             return memory, True
+
+    async def _autolink(self, memory: Memory) -> None:
+        """Connect a freshly-written memory to its topical neighbours.
+
+        Enrichment, not part of the write's contract: :meth:`AutolinkService.autolink`
+        swallows its own failures so a graph problem can never fail an upsert.
+        """
+        if not settings.enable_autolink:
+            return
+        from app.services.autolink_service import AutolinkService
+
+        await AutolinkService(self._session).autolink(memory)
 
     # ── Invalidation (close a validity window, no replacement) ──
     async def _invalidate(self, memory: Memory, *, valid_to: datetime, emit: bool = True) -> Memory:

@@ -4,11 +4,14 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.auth import enforce_tenant, get_current_api_key
 from app.db.session import get_session
+from app.models.api_key import APIKey
+from app.services.autolink_service import AutolinkService
 from app.services.graph_service import GraphTraversalService
 
 router = APIRouter()
@@ -93,3 +96,22 @@ async def find_shortest_path(
         path=path,
         path_length=len(path) - 1 if path else None,
     )
+
+
+@router.post("/autolink-backfill")
+async def autolink_backfill(
+    user_id: uuid.UUID,
+    limit: int = Query(default=500, ge=1, le=5000),
+    dry_run: bool = Query(default=True, description="Count what would be linked, write nothing."),
+    session: AsyncSession = Depends(get_session),
+    api_key: APIKey | None = Depends(get_current_api_key),
+) -> dict:
+    """Autolink a user's existing memories.
+
+    Turning on ``ENABLE_AUTOLINK`` only affects new writes, which leaves an
+    established store as sparse as it was. This walks what is already there.
+    Safe to re-run — deduplication means a second pass adds nothing — and it runs
+    on explicit request whether or not the flag is on.
+    """
+    enforce_tenant(api_key, user_id)
+    return await AutolinkService(session).backfill(user_id, limit=limit, dry_run=dry_run)

@@ -29,6 +29,7 @@ from app.schemas.memory import (
 from app.schemas.memory_link import MemoryLinkResponse
 from app.schemas.team import ACLGrantRequest, ACLResponse, MemoryShareRequest
 from app.services.access_service import AccessService
+from app.services.autolink_service import AutolinkService
 from app.services.context_assembly_service import ContextAssemblyService
 from app.services.forgetting_service import ForgettingService
 from app.services.memory_service import MemoryService
@@ -352,6 +353,25 @@ async def list_memory_versions(
     svc = MemoryService(session)
     versions = await svc.get_versions(memory_id)
     return [MemoryVersionResponse.model_validate(v) for v in versions]
+
+
+@router.post("/{memory_id}/autolink", response_model=list[MemoryLinkResponse])
+async def autolink_memory(
+    memory_id: uuid.UUID,
+    session: AsyncSession = Depends(get_session),
+    api_key: APIKey | None = Depends(get_current_api_key),
+) -> list[MemoryLinkResponse]:
+    """Link this memory to its nearest topical neighbours, now.
+
+    Writes ``related_to`` edges to the most similar memories the owner has.
+    Deduplicated in both directions, so calling it twice adds nothing the second
+    time. Runs on explicit request whether or not ``ENABLE_AUTOLINK`` is on.
+    """
+    svc = MemoryService(session)
+    memory = await svc.get_memory(memory_id)
+    enforce_tenant(api_key, memory.user_id)
+    links = await AutolinkService(session).autolink_now(memory)
+    return [MemoryLinkResponse.model_validate(link) for link in links]
 
 
 @router.get("/{memory_id}/links", response_model=list[MemoryLinkResponse])

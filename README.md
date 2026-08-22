@@ -31,6 +31,7 @@ Most agentic frameworks treat memory as an afterthought — a JSON blob, a vecto
 | **Temporal validity** | Bitemporal facts: query any point in time, plain SQL ([docs](docs/temporal-model.md)) | Latest-value only |
 | **Contradictions** | Conflicts resolved explicitly at write time — supersede or flag `disputed` + link | Stale facts silently coexist |
 | **Forgetting** | Decay + reconsolidation + audited erasure, GDPR-ready ([docs](docs/forgetting.md)) | Grows forever, or `DELETE` with no trace |
+| **Memory graph** | `related_to` edges built automatically on write, deduplicated in both directions ([docs](docs/autolinking.md)) | Links only if you write them yourself |
 | **Reflection** | Sleep-time consolidation derives insights from memory clusters, each traceable to its evidence ([docs](docs/reflection.md)) | Memories stay flat — no synthesis |
 | **Poisoning resistance** | Writes carry an `origin` that caps their authority; untrusted low-confidence writes are quarantined ([docs](docs/provenance.md)) | A scraped page can write itself in as authoritative |
 | **Audit trail** | Every mutation is versioned (lossless snapshots); every retrieval is logged | Fire-and-forget |
@@ -314,6 +315,8 @@ All endpoints live under `/api/v1`.
 | | | |
 | `POST` | `/graph/expand` | BFS graph traversal from seed memory |
 | `POST` | `/graph/shortest-path` | Shortest path between two memories |
+| `POST` | `/graph/autolink-backfill` | Autolink a user's existing memories |
+| `POST` | `/memories/{id}/autolink` | Link one memory to its neighbours now |
 | | | |
 | `GET` | `/consolidation/duplicates` | Find exact duplicates |
 | `POST` | `/consolidation/merge` | Merge two memories |
@@ -407,6 +410,9 @@ All settings are driven by environment variables (or `.env`):
 | `ENABLE_RECONSOLIDATION` | `false` | Recall boosts a memory's importance |
 | `RECONSOLIDATION_BOOST` | `0.02` | Per-recall importance bump (capped at 1.0) |
 | `MCP_ENABLE_FORGET` | `false` | Expose the irreversible `forget_memory` MCP tool |
+| `ENABLE_AUTOLINK` | `false` | Link new memories to topical neighbours ([docs](docs/autolinking.md)) |
+| `AUTOLINK_SIMILARITY_THRESHOLD` | `0.85` | Cosine similarity required to autolink |
+| `AUTOLINK_MAX_LINKS` | `3` | Maximum automatic edges per write |
 | `ENABLE_REFLECTION` | `false` | Sleep-time consolidation over memory clusters ([docs](docs/reflection.md)) |
 | `REFLECTION_MIN_CLUSTER_SIZE` | `3` | Memories needed before a cluster is reflected on |
 | `REFLECTION_SIMILARITY_THRESHOLD` | `0.75` | Cosine similarity to join a cluster |

@@ -32,6 +32,7 @@ Welcome to the EngramDB documentation. Use the guides below to learn how to use 
 | [Architecture](architecture.md) | System design diagrams and data flow |
 | [Temporal Model](temporal-model.md) | Bitemporal facts, `as_of` queries, supersession, and timelines |
 | [Forgetting](forgetting.md) | Decay, reconsolidation, pinning, and auditable GDPR erasure |
+| [Automatic Linking](autolinking.md) | Building the memory graph on write: thresholds, dedup, and backfill |
 | [Reflection](reflection.md) | Sleep-time consolidation: clustering, insights, and run auditing |
 | [Provenance](provenance.md) | Write origins, authority ceilings, and memory-poisoning resistance |
 
